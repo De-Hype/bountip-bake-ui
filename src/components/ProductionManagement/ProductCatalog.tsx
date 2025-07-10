@@ -117,7 +117,7 @@ const ProductCatalog: React.FC = () => {
                   </div>
                 </th>
                 <th className="w-40 px-6 py-3 text-left">
-                  {products.length > 10000 && (
+                  {products.length > 0 && (
                     <div className="flex items-center space-x-2">
                       <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Allergens

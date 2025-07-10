@@ -90,6 +90,8 @@ const EditProductModals: React.FC<EditProductModalsProps> = ({
   const outlet = useSelectedOutlet();
   const outletId = outlet?.outlet.id;
   console.log(outletId);
+const outletsData= useSelectedOutlet()
+console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
 
   // Form data state
   const [formData, setFormData] = useState<ProductFormData>({
@@ -97,20 +99,7 @@ const EditProductModals: React.FC<EditProductModalsProps> = ({
     category: "",
     sellingPrice: "",
     hasPriceTiers: false,
-    priceTiers: [
-      {
-        id: "retail",
-        label: "Retail Price Tier",
-        price: "£40",
-        checked: true,
-      },
-      {
-        id: "wholesale",
-        label: "Wholesale Price Tier",
-        price: "£35",
-        checked: false,
-      },
-    ],
+    priceTiers: [], // Start with empty array, will be populated from outlet data
     description: "",
     preparationArea: "",
     hasAllergens: false,
@@ -138,6 +127,28 @@ const EditProductModals: React.FC<EditProductModalsProps> = ({
     packagingMethod: "",
     imageUrl: "",
   });
+
+  useEffect(() => {
+    if (outletsData?.outlet.priceTier) {
+      const availablePriceTiers = outletsData.outlet.priceTier.map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (tier: any) => ({
+          id: tier.id,
+          name: tier.name,
+          description: tier.description,
+          pricingRules: tier.pricingRules,
+          isActive: tier.isActive,
+          checked: selectedProduct?.priceTierId === tier.id, // Check if this tier is selected for the product
+        })
+      );
+
+      setFormData((prev) => ({
+        ...prev,
+        priceTiers: availablePriceTiers,
+      }));
+    }
+  }, [outletsData?.outlet.priceTier, selectedProduct?.priceTierId]);
+  
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
@@ -197,36 +208,29 @@ const EditProductModals: React.FC<EditProductModalsProps> = ({
     }
     if (selectedProduct) {
       console.log(selectedProduct);
+
+      // Get available price tiers from outlet data
+      const availablePriceTiers =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        outletsData?.outlet.priceTier?.map((tier: any) => ({
+          id: tier.id,
+          name: tier.name,
+          description: tier.description,
+          pricingRules: tier.pricingRules,
+          isActive: tier.isActive,
+          checked: selectedProduct.priceTierId === tier.id, // Check if this tier is selected
+        })) || [];
+
       setFormData({
         productName: selectedProduct.name,
         category: selectedProduct.category,
         sellingPrice: selectedProduct.price?.toString() || "",
         hasPriceTiers: !!selectedProduct.priceTierId,
-        priceTiers: selectedProduct.priceTierId
-          ? [
-              {
-                id: "retail",
-                label: "Retail Price Tier",
-                price: "£40",
-                checked: selectedProduct.priceTierId === 1,
-              },
-              {
-                id: "wholesale",
-                label: "Wholesale Price Tier",
-                price: "£35",
-                checked: false,
-              },
-            ]
-          : [],
+        priceTiers: availablePriceTiers,
         description: selectedProduct.description || "",
         preparationArea: selectedProduct.preparationArea || "",
         hasAllergens: !!selectedProduct.allergenList,
         allergens: [],
-          // selectedProduct.allergenList?.allergies.map((allergy, index) => ({
-          //   id: (index + 1).toString(),
-          //   name: allergy,
-          //   isSelected: true,
-          // })) || [],
         leadTimeHours:
           Math.floor((selectedProduct.leadTime || 0) / 3600).toString() || "",
         leadTimeMinutes:
@@ -241,12 +245,22 @@ const EditProductModals: React.FC<EditProductModalsProps> = ({
         imageUrl: selectedProduct.logoUrl as string,
       });
     }
-  }, [fetchProductPriceHistory, selectedProduct]);
+  }, [
+    fetchProductPriceHistory,
+    selectedProduct,
+    outletsData?.outlet.priceTier,
+  ]);
+  
+  
 
   if (!isOpen && !isVisible) return null;
 
   const handleProductSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Get the selected price tier ID
+    const selectedPriceTier = formData.priceTiers.find((tier) => tier.checked);
+    const selectedPriceTierId = selectedPriceTier ? selectedPriceTier.id : null;
 
     // VALIDATION STEP
     const requiredFields = [
@@ -290,7 +304,7 @@ const EditProductModals: React.FC<EditProductModalsProps> = ({
       category: formData.category,
       price: parseFloat(formData.sellingPrice),
       preparationArea: formData.preparationArea,
-      priceTierId: formData.hasPriceTiers ? 1 : null,
+      priceTierId: selectedPriceTierId, // Use the actual selected tier ID
       allergenList: formData.hasAllergens
         ? {
             allergies: formData.allergens
@@ -353,6 +367,7 @@ const EditProductModals: React.FC<EditProductModalsProps> = ({
       toast.error("An error occurred while saving the product");
     }
   };
+  
 
   const handleDeleteProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -844,9 +859,13 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
   tiers,
   onTiersChange,
 }) => {
-  const handleTierChange = (id: string) => {
-    const updatedTiers = tiers.map((tier) =>
-      tier.id === id ? { ...tier, checked: !tier.checked } : tier
+  const handleTierChange = (id: number) => {
+    // Changed from string to number
+    const updatedTiers = tiers.map(
+      (tier) =>
+        tier.id === id
+          ? { ...tier, checked: !tier.checked }
+          : { ...tier, checked: false } // Only allow one selection
     );
     onTiersChange(updatedTiers);
   };
@@ -860,22 +879,33 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
             index !== tiers.length - 1 ? "border-b border-gray-100" : ""
           }`}
         >
+          {
+            console.log(tiers)
+          }
           <div className="flex items-center gap-4 justify-between w-full">
             <div className="flex items-center gap-3.5">
               <div className="border border-[#E6E6E6] px-2.5 py-2.5 rounded-full">
                 <Tag className="h-[15px] w-[15px] text-[#15BA5C]" />
               </div>
-              <label
-                htmlFor={tier.id}
-                className="text-[#1E1E1E] text-[14px] font-normal cursor-pointer select-none"
-              >
-                {tier.label} - {tier.price}
-              </label>
+              <div className="flex flex-col">
+                <label
+                  htmlFor={tier.id.toString()}
+                  className="text-[#1E1E1E] text-[14px] font-medium cursor-pointer select-none"
+                >
+                  <span className="">
+                    {tier.label}
+                  </span>
+                  {tier.name}
+                </label>
+                <span className="text-[#898989] text-[12px]">
+                  {tier.description}
+                </span>
+              </div>
             </div>
             <div className="relative">
               <input
                 type="checkbox"
-                id={tier.id}
+                id={tier.id.toString()}
                 checked={tier.checked}
                 onChange={() => handleTierChange(tier.id)}
                 className="sr-only"
@@ -911,6 +941,7 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
     </>
   );
 };
+
 
 // Updated AllergenSelector Component
 interface AllergenSelectorProps {
