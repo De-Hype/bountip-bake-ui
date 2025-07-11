@@ -207,7 +207,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
   return (
     <Modal
       size="md"
-      subtitle="Update and Manage Price Tiers"
+      subtitle="Add, Create, and Remove price tiers"
       image={SettingFiles.PriceTier}
       isOpen={isOpen}
       onClose={onClose}
@@ -383,7 +383,8 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
         <label className="block text-sm font-medium mb-1">
           Price Tier Name
         </label>
-        <input type="text"
+        <input
+          type="text"
           className="w-full px-4 py-3 bg-white border border-[#D1D1D1] outline-none rounded-lg"
           value={editedTier.name}
           onChange={(e) =>
@@ -394,8 +395,10 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">
-          Description (optional)
+        <label className=" text-sm flex items-center gap-1.5 font-medium mb-1">
+          <span className="">Description</span>
+
+          <span className="text-[#15BA5C]">(optional)</span>
         </label>
         <textarea
           className="w-full px-4 py-3 bg-white border border-gray-300 outline-none rounded-lg resize-none text-sm"
@@ -609,7 +612,7 @@ export const PriceTierForm = React.forwardRef<
           Price Tier Name
         </label>
         <input
-        type="text"
+          type="text"
           className="w-full px-4 py-3 bg-white border outline-none border-[#D1D1D1] rounded-lg"
           value={tier.name}
           onChange={(e) => setTier({ ...tier, name: e.target.value })}
@@ -618,8 +621,10 @@ export const PriceTierForm = React.forwardRef<
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">
-          Description (optional)
+        <label className=" text-sm flex items-center gap-1.5 font-medium mb-1">
+          <span className="">Description</span>
+
+          <span className="text-[#15BA5C]">(optional)</span>
         </label>
         <textarea
           className="w-full px-4 py-3 bg-white border border-[#D1D1D1] outline-none rounded-lg resize-none text-sm"
