@@ -207,7 +207,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
   return (
     <Modal
       size="md"
-      subtitle="Add, Create, and Remove price tiers"
+      subtitle="Add, create and remove price tiers"
       image={SettingFiles.PriceTier}
       isOpen={isOpen}
       onClose={onClose}
@@ -418,7 +418,7 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
             id="markup-checkbox"
             checked={markupEnabled}
             onChange={(e) => handleMarkupToggle(e.target.checked)}
-            className="w-4 h-4 text-[#15BA5C] border-gray-300 rounded focus:ring-[#15BA5C]"
+            className="appearance-none w-3 h-3 border-2 border-[#15BA5C] rounded-full checked:bg-[#15BA5C] checked:border-[#15BA5C] focus:outline-none focus:ring-2 focus:ring-[#15BA5C] cursor-pointer"
           />
           <label htmlFor="markup-checkbox" className="text-sm font-medium">
             Markup %
@@ -427,7 +427,7 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
 
         {markupEnabled && (
           <Input
-            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg"
+            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg outline-none"
             type="number"
             min={0}
             max={100}
@@ -450,7 +450,7 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
             id="discount-checkbox"
             checked={discountEnabled}
             onChange={(e) => handleDiscountToggle(e.target.checked)}
-            className="w-4 h-4 text-[#15BA5C] border-gray-300 rounded focus:ring-[#15BA5C]"
+            className="appearance-none w-3 h-3 border-2 border-[#15BA5C] rounded-full checked:bg-[#15BA5C] checked:border-[#15BA5C] focus:outline-none focus:ring-2 focus:ring-[#15BA5C] cursor-pointer"
           />
           <label htmlFor="discount-checkbox" className="text-sm font-medium">
             Discount %
@@ -462,7 +462,7 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
             type="number"
             min={0}
             max={100}
-            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg"
+            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg outline-none"
             value={editedTier.discountPercent || ""}
             onChange={(e) =>
               setEditedTier({
@@ -642,8 +642,9 @@ export const PriceTierForm = React.forwardRef<
             id="new-markup-checkbox"
             checked={markupEnabled}
             onChange={(e) => handleMarkupToggle(e.target.checked)}
-            className="w-4 h-4 text-[#15BA5C] border-[#D1D1D1] rounded focus:ring-[#15BA5C]"
+            className="appearance-none w-3 h-3 border-2 border-[#15BA5C] rounded-full checked:bg-[#15BA5C] checked:border-[#15BA5C] focus:outline-none focus:ring-2 focus:ring-[#15BA5C] cursor-pointer"
           />
+
           <label htmlFor="new-markup-checkbox" className="text-sm font-medium">
             Markup %
           </label>
@@ -651,7 +652,7 @@ export const PriceTierForm = React.forwardRef<
 
         {markupEnabled && (
           <Input
-            className="w-full px-4 py-3 bg-white border border-[#D1D1D1] outline-none rounded-lg"
+            className="w-full px-4 py-3 bg-white border border-[#D1D1D1]  rounded-lg outline-none"
             type="number"
             min={0}
             max={100}
@@ -671,10 +672,10 @@ export const PriceTierForm = React.forwardRef<
         <div className="flex items-center gap-3">
           <input
             type="checkbox"
-            id="new-discount-checkbox"
+            id="new-markup-checkbox"
             checked={discountEnabled}
             onChange={(e) => handleDiscountToggle(e.target.checked)}
-            className="w-4 h-4 text-[#15BA5C] border-[#D1D1D1] rounded focus:ring-[#15BA5C]"
+            className="appearance-none w-3 h-3 border-2 border-[#15BA5C] rounded-full checked:bg-[#15BA5C] checked:border-[#15BA5C] focus:outline-none focus:ring-2 focus:ring-[#15BA5C] cursor-pointer"
           />
           <label
             htmlFor="new-discount-checkbox"
@@ -689,7 +690,7 @@ export const PriceTierForm = React.forwardRef<
             type="number"
             min={0}
             max={100}
-            className="w-full px-4 py-3 bg-white border border-[#D1D1D1] rounded-lg"
+            className="w-full px-4 py-3 bg-white border border-[#D1D1D1] rounded-lg outline-none"
             value={tier.discountPercent || ""}
             onChange={(e) =>
               setTier({
