@@ -1,23 +1,17 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import PinInput from "@/components/Inputs/PinInput";
-import { COOKIE_NAMES, setCookie } from "@/utils/cookiesUtils";
+import { COOKIE_NAMES, removeCookie } from "@/utils/cookiesUtils";
 import { toast } from "sonner";
 import authService from "@/services/authServices";
+import { useRouter } from "next/navigation";
 
-interface SetUpPinProps {
-  onNext: () => void;
-}
-const SetUpPin = ({ onNext }: SetUpPinProps) => {
+
+const SetUpPin = () => {
+    const router = useRouter();
+
   const pin = useAuthStore((state) => state.pin);
 
   const handlePinSetUp = async () => {
-    if (pin.length !== 4) {
-      toast.error("Please enter a valid 4-digit PIN", {
-        duration: 4000,
-        position: "bottom-right",
-      });
-      return;
-    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response:any = await authService.pinLogin({ pin });
@@ -31,24 +25,12 @@ const SetUpPin = ({ onNext }: SetUpPinProps) => {
     }
 
     if (response.status) {
-      toast.success("PIN setup successful", {
+      toast.success("PIN setup successful, please sign in", {
         duration: 4000,
         position: "bottom-right",
       });
-
-      if (response.data?.tokens) {
-        setCookie(
-          COOKIE_NAMES.BOUNTIP_REGISTERED_USERS,
-          // "bountipRegisteredUsers",
-          {
-            accessToken: response.data.tokens.accessToken,
-            refreshToken: response.data.tokens.refreshToken,
-          },
-          { expiresInMinutes: 60 * 120 }
-        );
-      }
-
-      onNext();
+      router.push("/auth?signin")
+      removeCookie(COOKIE_NAMES.BOUNTIP_REGISTERED_USERS);
     }
   };
 

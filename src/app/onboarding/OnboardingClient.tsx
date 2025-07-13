@@ -16,7 +16,7 @@ const OnboardingClient = () => {
 
   const handleNextStep = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("step", "business");
+    params.set("step", "pin");
     router.push(`?${params.toString()}`);
   }, [router, searchParams]);
 
@@ -29,9 +29,7 @@ const OnboardingClient = () => {
   );
   useEffect(() => {
     const checkIfUserRegistered = () => {
-      const isUserRegistered =
-        userTokens && userTokens.accessToken && userTokens.refreshToken;
-      if (!isUserRegistered) {
+      if (!userTokens) {
          router.push("/auth?signup");
         return null;
       }
@@ -51,8 +49,8 @@ const OnboardingClient = () => {
             filled={isPinStep ? 2 : 1}
             color="#15BA5C"
           />
-          {isPinStep && <SetUpPin onNext={handleNextStep} />}
-          {isBusinessStep && <BusinessInfo />}
+          {isPinStep && <SetUpPin />}
+          {isBusinessStep && <BusinessInfo onNext={handleNextStep} />}
         </div>
       </section>
     </main>

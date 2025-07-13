@@ -19,7 +19,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import PinInput from "../Inputs/PinInput";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { COOKIE_NAMES, getCookie, setCookie } from "@/utils/cookiesUtils";
+import { COOKIE_NAMES, setCookie } from "@/utils/cookiesUtils";
 import authService from "@/services/authServices";
 import { UserType } from "@/types/userTypes";
 import GoogleSignIn from "../GoogleSignIn";
@@ -117,14 +117,14 @@ const isAccountLocked = (email?: string): boolean => {
   if (!email) return false;
   const lockoutTime = getLockoutTime(email);
   if (!lockoutTime) return false;
-  
+
   const now = Date.now();
   if (now > lockoutTime) {
     // Lockout period has expired, clear the lockout
     clearLoginAttempts(email);
     return false;
   }
-  
+
   return true;
 };
 
@@ -132,7 +132,7 @@ const getRemainingLockoutTime = (email?: string): number => {
   if (!email) return 0;
   const lockoutTime = getLockoutTime(email);
   if (!lockoutTime) return 0;
-  
+
   const remaining = lockoutTime - Date.now();
   return Math.max(0, Math.ceil(remaining / 1000)); // Return seconds
 };
@@ -179,10 +179,10 @@ const AuthForm = ({ mode }: Props) => {
   // Timer for lockout countdown
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (lockoutTimer > 0) {
       interval = setInterval(() => {
-        setLockoutTimer(prev => {
+        setLockoutTimer((prev) => {
           if (prev <= 1) {
             return 0;
           }
@@ -190,7 +190,7 @@ const AuthForm = ({ mode }: Props) => {
         });
       }, 1000);
     }
-    
+
     return () => {
       if (interval) clearInterval(interval);
     };
@@ -212,27 +212,35 @@ const AuthForm = ({ mode }: Props) => {
   const handleLoginFailure = (email: string) => {
     const currentAttempts = getFailedAttempts(email);
     const newAttempts = currentAttempts + 1;
-    
+
     if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
       // Lock the account
       const lockoutTime = Date.now() + LOCKOUT_DURATION;
       setLockoutTime(email, lockoutTime);
       setFailedAttempts(email, newAttempts);
-      
+
       const remainingTime = getRemainingLockoutTime(email);
       setLockoutTimer(remainingTime);
-      
-      toast.error(`Account temporarily locked due to multiple failed attempts. Please try again in ${Math.ceil(remainingTime / 60)} minutes.`, {
-        duration: 6000,
-        position: "bottom-right",
-      });
+
+      toast.error(
+        `Account temporarily locked due to multiple failed attempts. Please try again in ${Math.ceil(
+          remainingTime / 60
+        )} minutes.`,
+        {
+          duration: 6000,
+          position: "bottom-right",
+        }
+      );
     } else {
       setFailedAttempts(email, newAttempts);
       const remainingAttempts = MAX_LOGIN_ATTEMPTS - newAttempts;
-      toast.error(`Invalid credentials. ${remainingAttempts} attempt(s) remaining before account lockout.`, {
-        duration: 4000,
-        position: "bottom-right",
-      });
+      toast.error(
+        `Invalid credentials. ${remainingAttempts} attempt(s) remaining before account lockout.`,
+        {
+          duration: 4000,
+          position: "bottom-right",
+        }
+      );
     }
   };
 
@@ -271,10 +279,15 @@ const AuthForm = ({ mode }: Props) => {
     // Check if account is locked
     if (isAccountLocked(data.email)) {
       const remainingTime = getRemainingLockoutTime(data.email);
-      toast.error(`Account is temporarily locked. Please try again in ${Math.ceil(remainingTime / 60)} minutes.`, {
-        duration: 4000,
-        position: "bottom-right",
-      });
+      toast.error(
+        `Account is temporarily locked. Please try again in ${Math.ceil(
+          remainingTime / 60
+        )} minutes.`,
+        {
+          duration: 4000,
+          position: "bottom-right",
+        }
+      );
       return;
     }
 
@@ -290,47 +303,47 @@ const AuthForm = ({ mode }: Props) => {
 
     if (response.status) {
       handleLoginSuccess(data.email);
-      
-      const userData: UserType = {
+
+      const userData: Partial<UserType> = {
         id: response.data.user.id,
         fullName: response.data.user.fullName,
         email: response.data.user.email,
         status: response.data.user.status,
         lastLoginAt: response.data.user.lastLoginAt,
         createdAt: response.data.user.createdAt,
-        userType: response.data.user.userType,
+        isPin: response.data.user.isPin,
       };
 
-      setCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER, userData);
-      const userTokens = getCookie(COOKIE_NAMES.BOUNTIP_REGISTERED_USERS);
-
-      setCookie(
-        COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS,
-        {
+      if (userData.isPin) {
+        setCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER, userData);
+        setCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS, {
           accessToken: response.data.tokens.accessToken,
           refreshToken: response.data.tokens.refreshToken,
-        }
-      );
-
-      if (userTokens) {
-        router.push("/onboarding");
-      } else {
+        });
         toast.success("Sign in successful", {
           duration: 4000,
           position: "bottom-right",
         });
         router.push("/dashboard");
+      } else {
+        setCookie(
+          COOKIE_NAMES.BOUNTIP_REGISTERED_USERS,
+          {
+            accessToken: response.data.tokens.accessToken,
+            refreshToken: response.data.tokens.refreshToken,
+          },
+          { expiresInMinutes: 10080 }
+        );
+        router.push("/onboarding");
       }
     }
   };
 
   const handlePinLogin = async (pinValue: string) => {
-    console.log("Handling PIN login with pin:", pinValue);
-    
+
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response: any = await authService.signInViaPin({ pin: pinValue });
-      console.log("PIN login response:", response);
 
       if (response.error) {
         // For PIN login, we'll use a generic identifier since we don't have email
@@ -342,20 +355,17 @@ const AuthForm = ({ mode }: Props) => {
       if (response.status) {
         // Clear any existing PIN login attempts
         clearLoginAttempts("pin_login");
-        
+
         toast.success("PIN login successful", {
           duration: 4000,
           position: "bottom-right",
         });
 
         if (response.data?.tokens) {
-          setCookie(
-            COOKIE_NAMES.BOUNTIP_REGISTERED_USERS,
-            {
-              accessToken: response.data.tokens.accessToken,
-              refreshToken: response.data.tokens.refreshToken,
-            }
-          );
+          setCookie(COOKIE_NAMES.BOUNTIP_REGISTERED_USERS, {
+            accessToken: response.data.tokens.accessToken,
+            refreshToken: response.data.tokens.refreshToken,
+          });
         }
 
         // Navigate to appropriate page
@@ -369,26 +379,26 @@ const AuthForm = ({ mode }: Props) => {
     }
   };
 
- 
-  
-
-  useEffect(() => {
-    console.log("❗ Form errors:", errors);
-  }, [errors]);
 
   // Separate handler for PIN login button click
-  const handlePinLoginClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handlePinLoginClick = async (
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
     e.preventDefault(); // Prevent form submission
-    
-    console.log("PIN login button clicked");
-    
+
+
     // Check if PIN login is locked
     if (isAccountLocked("pin_login")) {
       const remainingTime = getRemainingLockoutTime("pin_login");
-      toast.error(`PIN login is temporarily locked. Please try again in ${Math.ceil(remainingTime / 60)} minutes.`, {
-        duration: 4000,
-        position: "bottom-right",
-      });
+      toast.error(
+        `PIN login is temporarily locked. Please try again in ${Math.ceil(
+          remainingTime / 60
+        )} minutes.`,
+        {
+          duration: 4000,
+          position: "bottom-right",
+        }
+      );
       return;
     }
 
@@ -402,7 +412,7 @@ const AuthForm = ({ mode }: Props) => {
     }
 
     setIsLoading(true);
-    
+
     try {
       await handlePinLogin(pin);
     } catch (err) {
@@ -413,13 +423,11 @@ const AuthForm = ({ mode }: Props) => {
   };
 
   const onSubmit = async (data: FormValues) => {
-    // Skip PIN login in form submission - it's handled by the button click
     if (mode === "signin" && pinLogin) {
-      return; // Don't process PIN login here
+      return; 
     }
 
     setIsLoading(true);
-    console.log("Submitting form with data:", data);
 
     try {
       if (mode === "signup") {
@@ -445,32 +453,36 @@ const AuthForm = ({ mode }: Props) => {
   // Check if submit button should be disabled
   const isSubmitDisabled = () => {
     if (isLoading) return true;
-    
+
     if (mode === "signin" && pinLogin) {
       return isAccountLocked("pin_login") || !pin || pin.length < 4;
     }
-    
+
     if (mode === "signin" && currentEmail) {
       return isAccountLocked(currentEmail);
     }
-    
+
     return false;
   };
 
   const getSubmitButtonText = () => {
     if (isLoading) return "Loading...";
-    
+
     if (mode === "signin" && pinLogin) {
       if (isAccountLocked("pin_login")) {
-        return `Locked (${Math.ceil(lockoutTimer / 60)}:${String(lockoutTimer % 60).padStart(2, '0')})`;
+        return `Locked (${Math.ceil(lockoutTimer / 60)}:${String(
+          lockoutTimer % 60
+        ).padStart(2, "0")})`;
       }
       return "Sign In with PIN";
     }
-    
+
     if (mode === "signin" && currentEmail && isAccountLocked(currentEmail)) {
-      return `Locked (${Math.ceil(lockoutTimer / 60)}:${String(lockoutTimer % 60).padStart(2, '0')})`;
+      return `Locked (${Math.ceil(lockoutTimer / 60)}:${String(
+        lockoutTimer % 60
+      ).padStart(2, "0")})`;
     }
-    
+
     return mode === "signin" ? "Sign In" : "Sign Up";
   };
 
@@ -603,7 +615,9 @@ const AuthForm = ({ mode }: Props) => {
         )}
 
         {/* Password strength indicators */}
-        {!pinLogin && password && <PasswordStrengthMeter password={password} />}
+        {mode === "signup" && password && (
+          <PasswordStrengthMeter password={password} />
+        )}
         {!pinLogin && password && (
           <p className="text-sm text-gray-600 mt-1">{label}</p>
         )}
@@ -818,7 +832,6 @@ interface StrengthLabel {
   label: string;
   color: string;
 }
-
 
 export const getStrengthLabel = (strength: number): StrengthLabel => {
   switch (strength) {

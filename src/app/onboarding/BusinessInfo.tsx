@@ -3,47 +3,66 @@ import { ChevronDown, Plus, X, Check } from "lucide-react";
 import BusinessRevenueComponent from "./BusinessRevenueComponent";
 import { businessService } from "@/services/businessService";
 import { toast } from "sonner";
-import { COOKIE_NAMES, getCookie, removeCookie } from "@/utils/cookiesUtils";
-import { useRouter } from "next/navigation";
 import { BusinessAndOutlet, BusinessResponse } from "@/types/businessTypes";
-import { Country, ICountry } from 'country-state-city';
+import { Country, ICountry } from "country-state-city";
+import C from "currency-codes";
+import Image from "next/image";
 
-// Get all countries from the package
+// Retrieve countries and currencies
 const countries = Country.getAllCountries();
+const currencies = C.codes()
+  .map((code) => C.code(code))
+  .filter(Boolean);
 
 const defaultBusinessTypes = ["Bakery", "Restaurant", "Bar"];
 
-const BusinessInfo = () => {
-  const router = useRouter();
+interface BusinessInfoProps {
+  onNext: () => void;
+}
+const BusinessInfo = ({onNext}:BusinessInfoProps) => {
   const [businessType, setBusinessType] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<ICountry | null>(null);
-  const [businessAddress, setBusinessAddress] = useState("")
+  const [businessAddress, setBusinessAddress] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedCurrency, setSelectedCurrency] = useState<any>(null);
   const [businessTypes, setBusinessTypes] = useState(defaultBusinessTypes);
   const [isBusinessTypeOpen, setIsBusinessTypeOpen] = useState(false);
   const [isLocationOpen, setIsLocationOpen] = useState(false);
+  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [newBusinessType, setNewBusinessType] = useState("");
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [revenue, setRevenue] = useState(50000);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_, setLogoFile] = useState<File | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currencySearchTerm, setCurrencySearchTerm] = useState("");
   const [uploadedImageUrl, setUploadedImageUrl] = useState("");
   const [{ businessId, outletId }, setBusinessOutlet] =
     useState<BusinessAndOutlet>({
       businessId: "",
       outletId: "",
     });
-    const filteredCountries = countries.filter((country) =>
-      country.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
+
+  const filteredCountries = countries.filter((country) =>
+    country.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredCurrencies = currencies.filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (currency:any) =>
+      currency.currency
+        .toLowerCase()
+        .includes(currencySearchTerm.toLowerCase()) ||
+      currency.code.toLowerCase().includes(currencySearchTerm.toLowerCase())
+  );
+
   const handleAddBusinessType = () => {
     if (
       newBusinessType.trim() &&
       !businessTypes.includes(newBusinessType.trim())
     ) {
-      const updatedTypes = [...businessTypes, newBusinessType.trim()];
-      setBusinessTypes(updatedTypes);
+      const updated = [...businessTypes, newBusinessType.trim()];
+      setBusinessTypes(updated);
       setBusinessType(newBusinessType.trim());
       setNewBusinessType("");
       setIsAddingNew(false);
@@ -53,26 +72,18 @@ const BusinessInfo = () => {
 
   useEffect(() => {
     if (typeof businessId === "number" && typeof outletId === "number") return;
-
     const fetchBusiness = async () => {
       try {
         const res =
           (await businessService.getUserBusiness()) as BusinessResponse;
-        console.log("This is res ----", res);
-        if ("error" in res || !res.status) {
-          console.warn("Failed to fetch business:", res);
-          return;
-        }
-
-        const businessId = res.data?.business?.id as string | number;
-        const outletId = res.data?.outlets?.[0]?.outlet?.id as string | number;
-        console.log("This is business----", businessId, outletId);
-        setBusinessOutlet({ businessId , outletId });
+        if ("error" in res || !res.status) return;
+        const bizId = res.data?.business?.id as string | number;
+        const outId = res.data?.outlets?.[0]?.outlet?.id as string | number;
+        setBusinessOutlet({ businessId: bizId, outletId: outId });
       } catch (err) {
-        console.error("Unexpected error while fetching business:", err);
+        console.error("Error fetching business:", err);
       }
     };
-
     fetchBusiness();
   }, [businessId, outletId]);
 
@@ -86,33 +97,20 @@ const BusinessInfo = () => {
     setIsLocationOpen(false);
   };
 
-  // Handle image upload URL from child component
-  const handleImageUpload = (url: string) => {
-    setUploadedImageUrl(url);
+  const handleCurrencySelect = (currency: string) => {
+    setSelectedCurrency(currency);
+    setIsCurrencyOpen(false);
   };
 
-  // Function to get country flag emoji
-  const getCountryFlag = (isoCode: string) => {
-    return isoCode
-      .toUpperCase()
-      .replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397));
-  };
+  const handleImageUpload = (url: string) => setUploadedImageUrl(url);
 
   const handleBusinessOnboardingSubmission = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!businessType || !selectedCountry) {
-      alert("Please select business type and location");
-      return;
+    e.preventDefault();
+    if (!businessType || !selectedCountry || !selectedCurrency) {
+      return alert("Please select business type, location, and currency");
     }
 
     try {
-      const Tokens = getCookie<{
-        accessToken: string;
-        refreshToken: string;
-      }>(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS);
-      
-      // Use only country name for location since we're not using state/city
-      const businessLocation = selectedCountry.name;
       
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response: any = await businessService.onboardBusiness({
@@ -120,26 +118,19 @@ const BusinessInfo = () => {
         outletId: outletId as number,
         country: selectedCountry.name,
         logoUrl: uploadedImageUrl,
-        address: businessAddress || businessLocation,
-        businessType: businessType,
-        currency: "USD",
+        address: businessAddress || selectedCountry.name,
+        businessType,
+        currency: selectedCurrency.code,
         revenueRange: revenue.toString(),
       });
-      
+
       if (response.status) {
         toast.success("Business information submitted successfully!", {
           duration: 4000,
           position: "bottom-right",
         });
-        removeCookie(COOKIE_NAMES.BOUNTIP_REGISTERED_USERS);
-        console.log(Tokens)
-        if(Tokens?.accessToken && Tokens?.refreshToken) {
-          router.push("/dashboard")
-        } else{
-          router.push("/auth?signin");
-        }
+        onNext();
       }
-      console.log("Business onboarding response:", response);
     } catch (error) {
       console.error(error);
       alert("An error occurred while submitting your business information.");
@@ -174,27 +165,25 @@ const BusinessInfo = () => {
                 </span>
                 <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               </button>
-
               {isBusinessTypeOpen && (
                 <div className="absolute z-10 w-full mt-1 bg-[#1C1B20] text-white border border-gray-300 rounded-lg shadow-lg">
                   <div className="py-1">
-                    {businessTypes.map((type, index) => (
+                    {businessTypes.map((type, i) => (
                       <button
-                        key={index}
+                        key={i}
                         type="button"
                         onClick={(e) => {
                           e.preventDefault();
                           handleBusinessTypeSelect(type);
                         }}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between group"
+                        className="w-full px-4 py-3 text-left hover:bg-gray-500 flex items-center justify-between group"
                       >
-                        <span className="">{type}</span>
+                        <span>{type}</span>
                         {businessType === type && (
                           <Check className="h-4 w-4 text-[#15BA5C]" />
                         )}
                       </button>
                     ))}
-
                     {!isAddingNew ? (
                       <button
                         type="button"
@@ -202,7 +191,7 @@ const BusinessInfo = () => {
                           e.preventDefault();
                           setIsAddingNew(true);
                         }}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center text-[#15BA5C] font-medium"
+                        className="w-full px-4 py-3 text-left hover:bg-gray-500 flex items-center text-[#15BA5C] font-medium"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Business
@@ -254,6 +243,7 @@ const BusinessInfo = () => {
             </div>
           </div>
 
+          {/* Country Dropdown */}
           <div className="space-y-2 text-[#1E1E1E]">
             <h3 className="font-medium text-[18px] text-[#1E1E1E]">
               Where is your Business located?
@@ -274,9 +264,13 @@ const BusinessInfo = () => {
                 >
                   {selectedCountry ? (
                     <span className="flex items-center">
-                      <span className="text-xl mr-2">
-                        {getCountryFlag(selectedCountry.isoCode)}
-                      </span>
+                      <Image
+                        src={`https://flagcdn.com/24x18/${selectedCountry.isoCode.toLowerCase()}.png`}
+                        alt={`${selectedCountry.name} flag`}
+                        width={24}
+                        height={18}
+                        className="w-6 h-4 mr-2 rounded-sm border border-gray-200 object-cover"
+                      />
                       {selectedCountry.name}
                     </span>
                   ) : (
@@ -285,10 +279,8 @@ const BusinessInfo = () => {
                 </span>
                 <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               </button>
-
               {isLocationOpen && (
                 <div className="absolute z-10 w-full mt-1 bg-[#1C1B20] border border-gray-300 rounded-lg shadow-lg">
-                  {/* Search Input */}
                   <div className="px-3 py-2 border-b border-gray-200">
                     <input
                       type="text"
@@ -299,8 +291,6 @@ const BusinessInfo = () => {
                       autoFocus
                     />
                   </div>
-
-                  {/* Filtered country list */}
                   <div className="py-1 max-h-60 overflow-y-auto">
                     {filteredCountries.length > 0 ? (
                       filteredCountries.map((country) => (
@@ -310,14 +300,18 @@ const BusinessInfo = () => {
                           onClick={(e) => {
                             e.preventDefault();
                             handleCountrySelect(country);
-                            setSearchTerm(""); // clear after select
+                            setSearchTerm("");
                           }}
-                          className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between group"
+                          className="w-full px-4 py-3 text-left hover:bg-gray-500 flex items-center justify-between group"
                         >
-                          <span className="flex items-center text-gray-900">
-                            <span className="text-xl mr-2">
-                              {getCountryFlag(country.isoCode)}
-                            </span>
+                          <span className="flex items-center text-white">
+                            <Image
+                              src={`https://flagcdn.com/24x18/${country.isoCode.toLowerCase()}.png`}
+                              alt={`${country.name} flag`}
+                              width={24}
+                              height={18}
+                              className="w-6 h-4 mr-2 rounded-sm border border-gray-200 object-cover"
+                            />
                             <span className="text-white">{country.name}</span>
                           </span>
                           {selectedCountry?.isoCode === country.isoCode && (
@@ -336,6 +330,7 @@ const BusinessInfo = () => {
             </div>
           </div>
 
+          {/* Business Address */}
           <div className="space-y-2">
             <h3 className="font-medium text-[18px] text-gray-700">
               What is your Business address?
@@ -343,13 +338,83 @@ const BusinessInfo = () => {
             <input
               type="text"
               name="businessAddress"
-              id=""
               onChange={(e) => setBusinessAddress(e.target.value)}
               placeholder="Enter your Business address"
-              autoFocus
-              className="w-full text-[#1E1E1E] text-[15px] flex-1 px-3 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#15BA5C]"
+              className="w-full text-[#1E1E1E] text-[15px] px-3 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#15BA5C]"
             />
           </div>
+
+          {/* Currency Dropdown */}
+          <div className="space-y-2">
+            <h3 className="font-medium text-[18px] text-gray-700">
+              What is your preferred currency?
+            </h3>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsCurrencyOpen(!isCurrencyOpen);
+                }}
+                className="w-full px-4 py-3 text-left bg-white border border-gray-300 rounded-lg shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors"
+              >
+                <span
+                  className={
+                    selectedCurrency ? "text-gray-900" : "text-gray-500"
+                  }
+                >
+                  {selectedCurrency
+                    ? `${selectedCurrency.currency} (${selectedCurrency.code})`
+                    : "Select your currency"}
+                </span>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              </button>
+              {isCurrencyOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-[#1C1B20] border border-gray-300 rounded-lg shadow-lg">
+                  <div className="px-3 py-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      value={currencySearchTerm}
+                      onChange={(e) => setCurrencySearchTerm(e.target.value)}
+                      placeholder="Search currency..."
+                      className="w-full text-white px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#15BA5C] text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="py-1 max-h-60 overflow-y-auto">
+                    {filteredCurrencies.length > 0 ? (
+                      filteredCurrencies.map(
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (currency:any) => (
+                          <button
+                            key={currency.code}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleCurrencySelect(currency);
+                              setCurrencySearchTerm("");
+                            }}
+                            className="w-full px-4 py-3 text-left hover:bg-gray-500 flex items-center justify-between group"
+                          >
+                            <span className="text-white">{`${currency.currency} (${currency.code})`}</span>
+                            {selectedCurrency?.code === currency.code && (
+                              <Check className="h-4 w-4 text-[#15BA5C]" />
+                            )}
+                          </button>
+                        )
+                      )
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-gray-500">
+                        No currencies found.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Revenue + Logo Upload */}
           <div className="w-full">
             <BusinessRevenueComponent
               onRevenueChange={setRevenue}
@@ -358,11 +423,11 @@ const BusinessInfo = () => {
             />
           </div>
 
-          {/* Continue Button */}
+          {/* Submit */}
           <button
             onClick={handleBusinessOnboardingSubmission}
             type="submit"
-            disabled={!businessType || !selectedCountry}
+            disabled={!businessType || !selectedCountry || !selectedCurrency}
             className="w-full mt-8 px-6 py-3 bg-[#15BA5C] text-white font-medium rounded-lg hover:bg-[#13A652] focus:outline-none focus:ring-2 focus:ring-[#15BA5C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Continue

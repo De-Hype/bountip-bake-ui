@@ -23,14 +23,14 @@ const VerifyPage = () => {
 
   const firstName = user?.name?.split(" ")[0];
 
+  
+
   useEffect(() => {
     if (!user || !firstName) {
       router.push(`/auth?signup`);
     }
-  }, [user, firstName, router]);
-
-  useEffect(() => {
     inputsRef.current[0]?.focus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!user || !firstName) {
@@ -88,8 +88,6 @@ const VerifyPage = () => {
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response: any = await authService.verifyEmail(data);
-    console.log(response);
-
     if (response.error) {
       toast.error(response.message || "Invalid OTP", {
         duration: 4000,
@@ -105,16 +103,6 @@ const VerifyPage = () => {
       });
 
       setShowSignUpSuccessModal(true);
-
-      // Email verification uses bountipRegisteredUsers cookie
-      // setCookie(
-      //   "bountipRegisteredUsers",
-      //   {
-      //     accessToken: response.data.tokens.accessToken,
-      //     refreshToken: response.data.tokens.refreshToken,
-      //   },
-      //   { expiresInMinutes: 10080 } // 7 days
-      // );
       setCookie(
         COOKIE_NAMES.BOUNTIP_REGISTERED_USERS,
         {

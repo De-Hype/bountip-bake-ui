@@ -16,10 +16,15 @@ export default function Home() {
       accessToken: string;
       refreshToken: string;
     }>(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS);
+    const isNotOnboarded = getCookie(COOKIE_NAMES.BOUNTIP_REGISTERED_USERS)
 
     if (token?.accessToken) {
       router.push("/dashboard");
-    } else {
+    } else if(isNotOnboarded){
+      router.push("/onboarding")
+    }
+    
+    else {
       router.push("/auth?signin");
     }
   }, [router]);

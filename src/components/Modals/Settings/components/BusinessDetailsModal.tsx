@@ -13,6 +13,7 @@ import { Check, ChevronDown, Plus, X, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { CiEdit } from "react-icons/ci";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
@@ -23,6 +24,7 @@ import uploadService from "@/services/uploadService";
 import settingsService from "@/services/settingsService";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
+import { useBusinessStore } from "@/stores/useBusinessStore";
 
 interface BusinessDetailsModalProps {
   isOpen: boolean;
@@ -38,26 +40,27 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   onClose,
   outletId,
 }) => {
-const outlet = useSelectedOutlet();
-const business = useBusiness()
+  const outlet = useSelectedOutlet();
+  const business = useBusiness();
   const [details, setDetails] = useState<BusinessDetailsType>({
     name: "",
     email: "",
-    phone: "+2348062236427",
-    country: "Nigeria",
-    state: "Enugu",
-    city: "Owerri",
-    address: "Enugu",
-    businessType: "Bakery",
-    postalCode: "734007",
+    phone: "",
+    country: "",
+    state: "",
+    city: "",
+    address: "",
+    businessType: "",
+    postalCode: "",
   });
+  const {fetchBusinessData} = useBusinessStore()
 
   const [newBusinessType, setNewBusinessType] = useState("");
   const [businessTypes, setBusinessTypes] = useState(defaultBusinessTypes);
   const [businessType, setBusinessType] = useState("");
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isBusinessTypeOpen, setIsBusinessTypeOpen] = useState(false);
-
+  const [phoneError, setPhoneError] = useState<string>("");
   // Country dropdown states
   const [selectedCountry, setSelectedCountry] = useState<ICountry | null>(null);
   const [isCountryOpen, setIsCountryOpen] = useState(false);
@@ -158,7 +161,7 @@ const business = useBusiness()
       country: outlet?.outlet.country || "",
       phone: outlet?.outlet.phoneNumber || "",
       postalCode: outlet?.outlet.postalCode || "",
-      state: outlet?.outlet.state|| "",
+      state: outlet?.outlet.state || "",
     });
 
     // Set initial country selection based on business data
@@ -193,6 +196,7 @@ const business = useBusiness()
     if (business?.businessType) {
       setBusinessType(business.businessType);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [business]);
 
   const handleBusinessTypeSelect = (type: string) => {
@@ -236,23 +240,23 @@ const business = useBusiness()
 
     return currency || "Currency not found";
   };
-  
 
   // Dummy form submission function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
+    if (phoneError) return;
+    console.log(phoneError, "This is the error")
 
-    const {country} = details;
-    
+    const { country } = details;
+
     const finalDetails = {
       ...details,
       businessType,
-      revenueRange:"10-500",
-      currency:getCurrencyByCountryName(country),
+      revenueRange: "10-500",
+      currency: getCurrencyByCountryName(country),
       logoUrl: uploadedImageUrl,
     };
-    console.log(finalDetails)
+    console.log(finalDetails);
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response: any = await settingsService.updateBusinessDetails(
       finalDetails,
@@ -278,6 +282,7 @@ const business = useBusiness()
       setSelectedCity(null);
       onClose();
     }
+    await fetchBusinessData()
   };
 
   const handleChange = (field: keyof BusinessDetailsType, value: string) => {
@@ -437,11 +442,24 @@ const business = useBusiness()
           <Input
             label="Phone Number"
             value={details.phone}
-            onChange={(e) => handleChange("phone", e.target.value)}
+            onChange={(e) => {
+              handleChange("phone", e.target.value);
+              setPhoneError("");
+              if (selectedCountry) {
+                const phoneNumber = parsePhoneNumberFromString(
+                  e.target.value,
+                  selectedCountry.isoCode as import("libphonenumber-js").CountryCode
+                );
+                if (!phoneNumber || !phoneNumber.isValid()) {
+                  setPhoneError("Invalid phone number for selected country");
+                }
+              }
+            }}
             placeholder="Enter phone number"
+            disabled={!selectedCountry}
             className={`w-full px-4 py-3 text-left bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors ${getDisabledStyles(
               details.phone
-            )}`}
+            )} ${!selectedCountry ? "cursor-not-allowed" : ""}`}
           />
 
           {/* Country Dropdown */}
@@ -467,9 +485,14 @@ const business = useBusiness()
                 >
                   {selectedCountry ? (
                     <span className="flex items-center">
-                      <span className="text-xl mr-2">
-                        {getCountryFlag(selectedCountry.isoCode)}
-                      </span>
+                      <Image
+                        src={`https://flagcdn.com/24x18/${selectedCountry.isoCode.toLowerCase()}.png`}
+                        alt={selectedCountry.name + " flag"}
+                        className="w-6 h-4 mr-2 rounded-sm border border-gray-200 object-cover"
+                        style={{ display: "inline-block" }}
+                        width={20}
+                        height={20}
+                      />
                       {selectedCountry.name}
                     </span>
                   ) : (
@@ -797,99 +820,101 @@ const business = useBusiness()
             Logo
           </label>
 
-          {uploadedImageUrl && (
-            <div className="w-full">
-              <section className="relative h-[250px] w-full ">
-                <Image
-                  src={uploadedImageUrl}
-                  alt="Business logo"
-                  fill
-                  className="object-contain"
-                  sizes="100vw"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = "none";
-                    target.nextElementSibling?.classList.remove("hidden");
-                  }}
-                />
+          {uploadedImageUrl ||
+            ((outlet?.outlet.logoUrl as string) && (
+              <div className="w-full">
+                <section className="relative h-[250px] w-full ">
+                  <Image
+                    src={uploadedImageUrl || (outlet?.outlet.logoUrl as string)}
+                    alt="Business logo"
+                    fill
+                    className="object-contain"
+                    sizes="100vw"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                      target.nextElementSibling?.classList.remove("hidden");
+                    }}
+                  />
 
-                <button
-                  type="button"
-                  onClick={handleDeleteImage}
-                  className="absolute px-2.5 py-2.5 flex items-center justify-center rounded-full top-2.5 right-0 z-50 bg-[#15BA5C] text-white font-bold transition-colors"
-                  title="Delete logo"
-                >
-                  <CiEdit className="h-5 w-5" />
-                </button>
-              </section>
-            </div>
-          )}
+                  <button
+                    type="button"
+                    onClick={handleDeleteImage}
+                    className="absolute px-2.5 py-2.5 flex items-center justify-center rounded-full top-2.5 right-0 z-50 bg-[#15BA5C] text-white font-bold transition-colors"
+                    title="Delete logo"
+                  >
+                    <CiEdit className="h-5 w-5" />
+                  </button>
+                </section>
+              </div>
+            ))}
 
           {/* Only show upload area if no image is uploaded */}
-          {!uploadedImageUrl && (
-            <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                isDragOver
-                  ? "border-[#15BA5C] bg-green-50"
-                  : uploadError
-                  ? "border-red-300 hover:border-red-400 hover:bg-red-50"
-                  : "border-gray-300 hover:border-[#15BA5C] hover:bg-gray-50"
-              } ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={handleUploadClick}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".jpg,.jpeg,.png,.svg"
-                onChange={handleFileInputChange}
-                className="hidden"
-                disabled={isUploading}
-              />
+          {!uploadedImageUrl ||
+            (outlet?.outlet.logoUrl && (
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                  isDragOver
+                    ? "border-[#15BA5C] bg-green-50"
+                    : uploadError
+                    ? "border-red-300 hover:border-red-400 hover:bg-red-50"
+                    : "border-gray-300 hover:border-[#15BA5C] hover:bg-gray-50"
+                } ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={handleUploadClick}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.svg"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                  disabled={isUploading}
+                />
 
-              <div className="flex flex-col items-center">
-                {isUploading ? (
-                  <>
-                    <Loader2 className="w-12 h-12 text-[#15BA5C] mb-4 animate-spin" />
-                    <p className="text-[#15BA5C] font-medium mb-1">
-                      Uploading...
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Please wait while we upload your logo
-                    </p>
-                  </>
-                ) : uploadError ? (
-                  <>
-                    <Upload className="w-12 h-12 text-red-400 mb-4" />
-                    <div className="text-center">
-                      <p className="text-red-600 font-medium mb-1">
-                        Upload failed
+                <div className="flex flex-col items-center">
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-12 h-12 text-[#15BA5C] mb-4 animate-spin" />
+                      <p className="text-[#15BA5C] font-medium mb-1">
+                        Uploading...
                       </p>
                       <p className="text-sm text-gray-600">
-                        Click to try again
+                        Please wait while we upload your logo
                       </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-16 h-16 bg-yellow-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                      🏪
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[#15BA5C] font-medium mb-1">
-                        Click to upload or Drag your logo here
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Max file: 5mb, PNG, JPG, SVG
-                      </p>
-                    </div>
-                  </>
-                )}
+                    </>
+                  ) : uploadError ? (
+                    <>
+                      <Upload className="w-12 h-12 text-red-400 mb-4" />
+                      <div className="text-center">
+                        <p className="text-red-600 font-medium mb-1">
+                          Upload failed
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Click to try again
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-16 h-16 bg-yellow-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        🏪
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[#15BA5C] font-medium mb-1">
+                          Click to upload or Drag your logo here
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Max file: 5mb, PNG, JPG, SVG
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            ))}
 
           {/* Error Message */}
           {uploadError && (

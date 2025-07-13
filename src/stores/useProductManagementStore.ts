@@ -287,7 +287,6 @@ SystemDefaults.CATEGORY,
           const categoryNames = response.data.data.map((item:any) => item.name);
           set({ categories: categoryNames });
         } else {
-          console.error("Failed to fetch categories:", response.message);
           set({ categories: [] });
         }
       } catch (error) {

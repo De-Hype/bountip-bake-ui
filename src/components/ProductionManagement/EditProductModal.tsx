@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 // import Pagination from "../Pagination/Pagination";
 import { formatDate } from "@/utils/getTimers";
+import { calculateTierPrice } from "@/utils/pricingRule";
 
 interface EditProductModalsProps {
   size?: "sm" | "md" | "lg" | "xl" | "full" | number;
@@ -526,6 +527,7 @@ console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
                   {formData.hasPriceTiers && (
                     <div className="flex flex-col gap-3.5 mt-4">
                       <PricingTierSelector
+                      price={formData.sellingPrice}
                         tiers={formData.priceTiers}
                         onTiersChange={(tiers) =>
                           handleInputChange("priceTiers", tiers)
@@ -852,11 +854,13 @@ export default EditProductModals;
 // Updated PricingTierSelector Component
 interface PricingTierSelectorProps {
   tiers: PricingTier[];
+  price:number,
   onTiersChange: (tiers: PricingTier[]) => void;
 }
 
 const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
   tiers,
+  price,
   onTiersChange,
 }) => {
   const handleTierChange = (id: number) => {
@@ -879,9 +883,7 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
             index !== tiers.length - 1 ? "border-b border-gray-100" : ""
           }`}
         >
-          {
-            console.log(tiers)
-          }
+          {console.log(tiers)}
           <div className="flex items-center gap-4 justify-between w-full">
             <div className="flex items-center gap-3.5">
               <div className="border border-[#E6E6E6] px-2.5 py-2.5 rounded-full">
@@ -890,16 +892,26 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
               <div className="flex flex-col">
                 <label
                   htmlFor={tier.id.toString()}
-                  className="text-[#1E1E1E] text-[14px] font-medium cursor-pointer select-none"
+                  className="text-[#1E1E1E] text-[14px] flex items-center gap-1.5 font-medium cursor-pointer select-none"
                 >
-                  <span className="">
-                    {tier.label}
-                  </span>
-                  {tier.name}
+                  <span>{tier.name}</span> -{" "}
+                  {tier.pricingRules.markupPercentage > 0 && (
+                    <span>
+                      Markup: {tier.pricingRules.markupPercentage}% - Value:  
+                       {calculateTierPrice(price, {
+                        ...tier.pricingRules
+                      })}
+                    </span>
+                  )}
+                  {tier.pricingRules.discountPercentage > 0 && (
+                    <span>
+                      Discount: {tier.pricingRules.discountPercentage}% - Value:  
+                       {calculateTierPrice(price, {
+                        ...tier.pricingRules,
+                      })}
+                    </span>
+                  )}
                 </label>
-                <span className="text-[#898989] text-[12px]">
-                  {tier.description}
-                </span>
               </div>
             </div>
             <div className="relative">
