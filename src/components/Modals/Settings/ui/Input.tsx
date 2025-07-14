@@ -19,7 +19,14 @@ export const Input: React.FC<InputProps> = ({
         </label>
       )}
       <input
-        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${className}`}
+        className={`w-full px-3 py-2 border border-gray-300 rounded-lg 
+          ${
+            props.disabled
+              ? " text-gray-500 llowed"
+              : "bg-white"
+          } 
+          focus:ring-2 focus:ring-green-500 focus:border-transparent 
+          ${className}`}
         {...props}
       />
       {error && <p className="text-sm text-red-600 mt-1">{error}</p>}

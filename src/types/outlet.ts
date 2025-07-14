@@ -166,6 +166,9 @@ export type TaxSettings = {
     name: string;
     rate: number;
     applicationType: "included" | "checkout" | "optional";
+    scope: "product" | "category" | "all";
+    productIdList?: Array<number> | null;
+    categoryIdList?: Array<string> | null;
   }>;
 };
 

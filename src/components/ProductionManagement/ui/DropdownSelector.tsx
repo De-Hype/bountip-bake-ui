@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { ChevronDown, Plus, Search } from "lucide-react";
 import productManagementService from "@/services/productManagementService";
-import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import { SystemDefaults } from "@/types/systemDefaults";
 
 interface DropdownSelectorProps {
@@ -10,6 +9,7 @@ interface DropdownSelectorProps {
   placeholder?: string;
   onSelect: (item: string) => void;
   madeFor?: SystemDefaults;
+  outletId?:number|string
 }
 
 export function DropdownSelector({
@@ -18,6 +18,8 @@ export function DropdownSelector({
   placeholder = "Select Item",
   onSelect,
   madeFor,
+  outletId
+
 }: DropdownSelectorProps) {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [showAddNew, setShowAddNew] = useState<boolean>(false);
@@ -25,7 +27,6 @@ export function DropdownSelector({
   const [searchTerm, setSearchTerm] = useState("");
   const [newItem, setNewItem] = useState("");
   const [localItems, setLocalItems] = useState<string[]>(items);
-  const outletId = useSelectedOutlet()?.outlet.id;
 
   const filteredItems = localItems.filter((item) =>
     item.toLowerCase().includes(searchTerm.toLowerCase())
@@ -64,7 +65,7 @@ export function DropdownSelector({
         const response = await productManagementService.createSystemDefaults(
           madeFor,
           trimmed,
-          outletId
+          outletId as number
         );
         console.log(response);
         
@@ -114,6 +115,7 @@ export function DropdownSelector({
           <div>
             {filteredItems.map((item) => (
               <button
+              type="button"
                 key={item}
                 onClick={() => handleItemSelect(item)}
                 className="w-full px-4 py-3 text-left text-white text-sm hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0"
@@ -124,6 +126,7 @@ export function DropdownSelector({
 
             {!showAddNew ? (
               <button
+              type="button"
                 onClick={() => setShowAddNew(true)}
                 className="w-full px-4 py-3 text-left text-green-400 text-sm hover:bg-gray-700 transition-colors flex items-center gap-2 border-t border-gray-700"
               >
@@ -141,6 +144,7 @@ export function DropdownSelector({
                     className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:ring-2 focus:ring-green-500 outline-none"
                   />
                   <button
+                  type="button"
                     onClick={handleAddNewItem}
                     className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
                   >

@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { PriceSettingsModal } from "@/components/Modals/Settings/components/PriceSettingsModal";
 import { PaymentMethodsModal } from "@/components/Modals/Settings/components/PaymentMethodsModal";
 import { BusinessDetailsModal } from "@/components/Modals/Settings/components/BusinessDetailsModal";
-import { PaymentMethod } from "@/types/settingTypes";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { LabellingSettingsModal } from "@/components/Modals/Settings/components/LabellingSettingsModal";
@@ -19,26 +18,25 @@ import { LocationSettingsModal } from "@/components/Modals/Settings/components/L
 import { ReceiptCustomizationModal } from "@/components/Modals/Settings/components/ReceiptCustomizationModal";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import { useBusinessStore } from "@/stores/useBusinessStore";
+import { useProductManagementStore } from "@/stores/useProductManagementStore";
 
 const SettingsPage: React.FC = () => {
   const outletId = useSelectedOutlet()?.outlet.id;
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [outletsData, setOutletsData] = useState([]);
-
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
-    { id: "1", name: "Cash", type: "cash", enabled: false },
-    { id: "2", name: "Virtual Hub", type: "virtual", enabled: false },
-    { id: "3", name: "Others", type: "others", enabled: true },
-  ]);
+ 
   const {fetchBusinessData} = useBusinessStore()
+  const {fetchCategory} = useProductManagementStore()
 
   const handleSettingClick = (id: string) => {
     setActiveModal(id);
   };
   useEffect(() => {
     fetchBusinessData()
+    
+      fetchCategory(outletId as number);
+    
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   
 
@@ -97,8 +95,6 @@ const SettingsPage: React.FC = () => {
       <PaymentMethodsModal
         isOpen={activeModal === "payment-methods"}
         onClose={() => setActiveModal(null)}
-        paymentMethods={paymentMethods}
-        onSave={setPaymentMethods}
       />
 
       <LocationSettingsModal

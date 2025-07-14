@@ -127,6 +127,11 @@ export enum TaxApplicationType {
   CHECKOUT = "checkout",
   OPTIONAL = "optional",
 }
+export enum TaxScopeType {
+  PRODUCT = "product",
+  CATEGORY = "category",
+  ALL = "all",
+}
 
 export enum TransferStatus {
   PENDING = "pending",

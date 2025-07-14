@@ -15,7 +15,7 @@ export class HttpService {
   private baseUrl: string;
   private isRefreshing: Record<string, boolean> = {};
 
-  constructor(env: BaseUrlProdType = "local") {
+  constructor(env: BaseUrlProdType = "live") {
     this.baseUrl = getBaseUrl(env);
   }
 
@@ -29,12 +29,11 @@ export class HttpService {
       this.isRefreshing[cookieName] = false;
       return null;
     }
-
+    console.log(tokens, "This are my tokens")
     try {
       const response = await fetch(`${this.baseUrl}/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+        method: "GET",
+        headers: { "Content-Type": "application/json", "Authorization":  `Bearer ${tokens.refreshToken}` },
       });
 
       if (!response.ok) throw new Error("Refresh token failed");

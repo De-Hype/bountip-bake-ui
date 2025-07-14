@@ -15,7 +15,6 @@ interface ProductResponse {
   };
 }
 
-
 interface IProductManagementStore {
   // UI State
   productClicked: boolean;
@@ -57,6 +56,8 @@ interface IProductManagementStore {
 
   fetchProductPriceHistory: (productId: number) => Promise<void>;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  allCategories: Record<string, any>[];
   categories: string[];
   setCategories: (categories: string[]) => void;
   fetchCategory: (outletId: string | number) => Promise<void>;
@@ -101,12 +102,14 @@ export const useProductManagementStore = create<IProductManagementStore>(
       set({ loading: true, error: null });
 
       try {
-        const response =
-          await productManagementService.fetchProducts(outletId, {
+        const response = (await productManagementService.fetchProducts(
+          outletId,
+          {
             page,
             limit,
             search,
-          }) as ProductResponse;
+          }
+        )) as ProductResponse;
 
         if (response.status && response.data) {
           const { data: productsData, meta } = response.data;
@@ -136,8 +139,10 @@ export const useProductManagementStore = create<IProductManagementStore>(
     // Delete Product
     deleteProduct: async (outletId, productId) => {
       try {
-        const response=
-          await productManagementService.deleteProduct(outletId, productId) as ApiResponseType;
+        const response = (await productManagementService.deleteProduct(
+          outletId,
+          productId
+        )) as ApiResponseType;
 
         if (response.status) {
           const state = get();
@@ -246,7 +251,7 @@ export const useProductManagementStore = create<IProductManagementStore>(
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const response:any =
+        const response: any =
           await productManagementService.fetchProductPriceHistory(
             outletId,
             productId
@@ -270,22 +275,28 @@ export const useProductManagementStore = create<IProductManagementStore>(
     },
 
     // Categories
+    allCategories:[],
     categories: [],
     setCategories: (categories) => set({ categories }),
 
     fetchCategory: async (outletId) => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const response:any=
+        const response: any =
           await productManagementService.fetchSystemDefaults(
-SystemDefaults.CATEGORY,
+            SystemDefaults.CATEGORY,
             outletId
           );
 
         if (response.status && response.data?.data) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const categoryNames = response.data.data.map((item:any) => item.name);
+          const categoryNames = response.data.data.map(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (item: any) => item.name
+          );
           set({ categories: categoryNames });
+          set({
+            allCategories: response.data.data,
+          });
         } else {
           set({ categories: [] });
         }
@@ -302,15 +313,17 @@ SystemDefaults.CATEGORY,
     fetchPreparationArea: async (outletId) => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const response:any =
+        const response: any =
           await productManagementService.fetchSystemDefaults(
-SystemDefaults.PREPARATION_AREA,
+            SystemDefaults.PREPARATION_AREA,
             outletId
           );
 
         if (response.status && response.data?.data) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const preparationArea = response.data.data.map((item:any) => item.name);
+          const preparationArea = response.data.data.map(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (item: any) => item.name
+          );
           set({ preparationArea });
         } else {
           console.error("Failed to fetch preparation areas:", response.message);
@@ -329,15 +342,17 @@ SystemDefaults.PREPARATION_AREA,
     fetchPackagingMethod: async (outletId) => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const response:any =
+        const response: any =
           await productManagementService.fetchSystemDefaults(
             SystemDefaults.PACKAGING_METHOD,
             outletId
           );
 
         if (response.status && response.data?.data) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const packagingMethod = response.data.data.map((item:any) => item.name);
+          const packagingMethod = response.data.data.map(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (item: any) => item.name
+          );
           set({ packagingMethod });
         } else {
           console.error("Failed to fetch packaging methods:", response.message);

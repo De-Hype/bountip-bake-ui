@@ -43,6 +43,7 @@ const ProductCatalog: React.FC = () => {
   }, [outletId, clearProducts]);
 
   const handleProductClick = (product: Product) => {
+    console.log(product, "Not a random product")
     setProductClicked(true);
     setSelectedProduct(product);
   };

@@ -66,6 +66,10 @@ class AuthService {
   async googleLogin (firebaseUserId:string){
     return this.request.post("/auth/google-login", { idToken:firebaseUserId });
   }
+
+  async getUser (){
+    return this.request.get("/auth", COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS)
+  }
  
 }
 

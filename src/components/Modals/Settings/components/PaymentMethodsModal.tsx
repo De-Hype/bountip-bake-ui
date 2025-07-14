@@ -2,35 +2,79 @@ import React, { useState } from "react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Switch } from "../ui/Switch";
-import { CreditCard, Smartphone, Banknote } from "lucide-react";
+import { CreditCard, Smartphone, Banknote, Trash2 } from "lucide-react";
 import { PaymentMethod } from "@/types/settingTypes";
 import SettingFiles from "@/assets/icons/settings";
 
 interface PaymentMethodsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  paymentMethods: PaymentMethod[];
-  onSave: (methods: PaymentMethod[]) => void;
 }
+
+const defaultMethods: PaymentMethod[] = [
+  { id: "1", name: "Cash", type: "cash", enabled: false },
+  { id: "2", name: "Virtual Wallet", type: "virtual", enabled: false },
+  { id: "3", name: "Others", type: "others", enabled: false },
+];
 
 export const PaymentMethodsModal: React.FC<PaymentMethodsModalProps> = ({
   isOpen,
   onClose,
-  paymentMethods,
-  onSave,
 }) => {
-  const [methods, setMethods] = useState<PaymentMethod[]>(paymentMethods);
+  const [methods, setMethods] = useState<PaymentMethod[]>(defaultMethods);
+  const [customName, setCustomName] = useState("");
+  const [idCounter, setIdCounter] = useState(100);
 
   const handleToggle = (id: string, enabled: boolean) => {
     setMethods((prev) =>
-      prev.map((method) => (method.id === id ? { ...method, enabled } : method))
+      prev.map((m) =>
+        enabled
+          ? { ...m, enabled: m.id === id }
+          : m.id === id
+          ? { ...m, enabled: false }
+          : m
+      )
     );
+    if (!enabled) {
+      setCustomName("");
+    }
+  };
+
+  const handleOthersSubmit = () => {
+    if (!customName.trim()) return;
+
+    const newMethod: PaymentMethod = {
+      id: idCounter.toString(),
+      name: customName.trim(),
+      type: "others",
+      enabled: true,
+    };
+
+    // Add the new method and deactivate others
+    setMethods((prev) =>
+      prev.map((m) => ({ ...m, enabled: false })).concat(newMethod)
+    );
+
+    setCustomName("");
+    setIdCounter((prev) => prev + 1);
+  };
+
+  const handleDelete = (id: string) => {
+    setMethods((prev) => prev.filter((m) => m.id !== id));
   };
 
   const handleSave = () => {
-    onSave(methods);
+    // You can persist selected methods here
     onClose();
   };
+
+  const selectedMethod = methods.find((m) => m.enabled);
+  const isSaveDisabled = !selectedMethod;
+
+  // ✅ FIXED: show form only when base "Others" is selected
+  const isOthersSelected = methods.some(
+    (m) => m.type === "others" && m.name === "Others" && m.enabled
+  );
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -45,7 +89,7 @@ export const PaymentMethodsModal: React.FC<PaymentMethodsModalProps> = ({
 
   return (
     <Modal
-      size={"lg"}
+      size="lg"
       image={SettingFiles.PaymentMethods}
       isOpen={isOpen}
       onClose={onClose}
@@ -65,18 +109,53 @@ export const PaymentMethodsModal: React.FC<PaymentMethodsModalProps> = ({
                 {getIcon(method.type)}
                 <span className="font-medium">{method.name}</span>
               </div>
-              <Switch
-                checked={method.enabled}
-                onChange={(enabled) => handleToggle(method.id, enabled)}
-              />
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={method.enabled}
+                  onChange={(enabled) => handleToggle(method.id, enabled)}
+                />
+                {method.type === "others" && method.name !== "Others" && (
+                  <button
+                    onClick={() => handleDelete(method.id)}
+                    className="text-red-500 hover:text-red-700"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
 
-        
+        {isOthersSelected && (
+          <div className="mt-4 flex flex-col gap-3">
+            <label className="text-[#1C1B20] text-[16px]">
+              Name of Payment Method
+            </label>
+            <input
+              type="text"
+              placeholder="Enter payment method name"
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              className="w-full border border-[#D1D1D1] outline-none rounded-[10px] px-4 py-3"
+            />
+            <button
+              onClick={handleOthersSubmit}
+              className="w-full hover:bg-[#15BA5C] hover:text-white border border-[#15BA5C] py-[9.8px] text-[#15BA5C] rounded-[9.8px] text-[15px]"
+              disabled={!customName.trim()}
+            >
+              + Add a Payment Method
+            </button>
+          </div>
+        )}
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSave} className="w-full">
+          <Button
+            onClick={handleSave}
+            className="w-full"
+            disabled={isSaveDisabled}
+          >
             Save
           </Button>
         </div>
@@ -98,23 +177,13 @@ const PaymentBanner: React.FC<PaymentBannerProps> = ({
     <div
       className={`relative bg-[#15BA5C] rounded-lg px-6 py-6 overflow-hidden ${className}`}
     >
-      {/* Main text */}
       <h2 className="text-white text-lg font-medium relative z-10">
         {heading}
       </h2>
-
-      {/* Decorative circles */}
       <div className="absolute right-0 bottom-1/2 transform -translate-y-1/2 pointer-events-none">
-        {/* Large outer circle - transparent with border */}
         <div className="absolute w-40 h-40 border-2 border-white/30 rounded-full -top-24 -right-20"></div>
-
-        {/* Medium circle - transparent with border */}
         <div className="absolute w-24 h-24 border-2 border-white/40 rounded-full -top-12 -right-10"></div>
-
-        {/* Small filled circle - white */}
         <div className="absolute w-5 h-5 bg-white rounded-full -top-3 right-10"></div>
-
-        {/* Small black circle - dark green/black (unchanged) */}
         <div className="absolute w-8 h-8 bg-green-900 rounded-full top-2 right-2"></div>
       </div>
     </div>

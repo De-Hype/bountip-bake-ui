@@ -53,7 +53,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
     if (!isOpen) {
       hasInitialized.current = false;
     }
-  }, [isOpen]);
+  }, [isOpen, outletsList]);
   
 
   // Early return after hooks

@@ -5,38 +5,83 @@ import { Dropdown } from "../ui/Dropdown";
 import { Check, Plus } from "lucide-react";
 import { useProductManagementStore } from "@/stores/useProductManagementStore";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
-import { TaxApplicationType } from "@/types/settingTypes";
+import { TaxApplicationType, TaxScopeType } from "@/types/settingTypes";
 import settingsService from "@/services/settingsService";
+import productManagementService from "@/services/productManagementService";
+import { SystemDefaults } from "@/types/systemDefaults";
+import { ApiResponseType } from "@/types/httpTypes";
+import { toast } from "sonner";
 
 export const AccountSettingsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
 }> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<"taxes" | "service">("taxes");
-  const { fetchCategory } = useProductManagementStore();
-  const outlet = useSelectedOutlet();
-  const outletId = outlet?.outlet.id as unknown as string;
-  const [taxes, setTaxes] = useState<TaxItem[]>([
-    {
-      id: "1",
-      name: "VAT",
-      rate: 7.5,
-      includeInMenuPrices: true,
-      applyAtOrderCheckout: false,
-      applyAtOrderCheckoutOptional: false,
-      productSetup: "all",
-      selectedCategories: {},
-    },
-  ]);
+  const { fetchCategory, categories } =
+    useProductManagementStore();
+  const [taxes, setTaxes] = useState<TaxItem[]>([]);
+  const [categoriesList, setCategoriesList] = useState<DropdownOption[]>([]);
+  const outletId = useSelectedOutlet()?.outlet.id;
+  const outletsTaxData = useSelectedOutlet()?.outlet.taxSettings?.taxes;
+  console.log(outletsTaxData, "This is the tax data");
 
+  // Transform outlet tax data to component format
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const transformOutletTaxData = (taxData: any[]): TaxItem[] => {
+    if (!taxData || !Array.isArray(taxData)) return [];
+
+    return taxData.map((tax, index) => ({
+      id: tax.id?.toString() || Date.now().toString() + index,
+      name: tax.name || "",
+      rate: tax.rate || 0,
+      includeInMenuPrices: tax.applicationType === TaxApplicationType.INCLUDED,
+      applyAtOrderCheckout: tax.applicationType === TaxApplicationType.CHECKOUT,
+      productSetup:
+        tax.scope === TaxScopeType.ALL
+          ? "all"
+          : tax.scope === TaxScopeType.CATEGORY
+          ? "categories"
+          : "certain",
+      selectedCategories: tax.selectedCategories
+        ? tax.selectedCategories.reduce(
+            (acc: Record<string, boolean>, cat: string) => {
+              acc[cat] = true;
+              return acc;
+            },
+            {}
+          )
+        : {},
+    }));
+  };
+
+  console.log(categories, "This is the categories")
+
+  // Load existing tax data when modal opens
   useEffect(() => {
-    fetchCategory(outletId);
-  }, []);
+    if (isOpen && outletsTaxData) {
+      const transformedTaxes = transformOutletTaxData(outletsTaxData);
+      setTaxes(transformedTaxes);
+    }
+  }, [isOpen, outletsTaxData]);
 
-  const [categories, setCategories] = useState<DropdownOption[]>([
-    { value: "bread", label: "Bread" },
-    { value: "dough", label: "Dough" },
-  ]);
+  // Fetch categories when component mounts
+  useEffect(() => {
+    if (outletId) {
+      fetchCategory(outletId as number);
+    }
+  }, [outletId, fetchCategory]);
+
+  // Update categoriesList when categories change
+  useEffect(() => {
+    if (categories && categories.length > 0) {
+      const mappedCategories = categories.map((item) => ({
+        value: item.toLowerCase(),
+        label: item,
+      }));
+      setCategoriesList(mappedCategories);
+    }
+  }, [categories]);
+
   const addNewTax = () => {
     const newTax: TaxItem = {
       id: Date.now().toString(),
@@ -44,7 +89,6 @@ export const AccountSettingsModal: React.FC<{
       rate: 0,
       includeInMenuPrices: true,
       applyAtOrderCheckout: false,
-      applyAtOrderCheckoutOptional: false,
       productSetup: "all",
       selectedCategories: {},
     };
@@ -57,16 +101,61 @@ export const AccountSettingsModal: React.FC<{
     );
   };
 
-  const addNewCategory = (categoryName: string) => {
-    const newCategory = {
-      value: categoryName.toLowerCase().replace(/\s+/g, "-"),
-      label: categoryName,
-    };
-    setCategories([...categories, newCategory]);
+  const addNewCategory = async (categoryName: string) => {
+    const response = (await productManagementService.createSystemDefaults(
+      SystemDefaults.CATEGORY,
+      categoryName,
+      outletId as number
+    )) as ApiResponseType;
+    if (response.status) {
+      const newCategory = {
+        value: categoryName.toLowerCase().replace(/\s+/g, "-"),
+        label: categoryName,
+      };
+      setCategoriesList([...categoriesList, newCategory]);
+      return;
+    } else {
+      toast.error("Failed to create a category");
+    }
   };
 
-  const saveTax = () => {
+  const saveTax = async () => {
     console.log("Saving taxes:", taxes);
+    const newData = taxes.map((item) => ({
+      ...item,
+      selectedCategories: Object.keys(item.selectedCategories),
+    }));
+
+    const results = await Promise.all(
+      newData.map(async (item) => {
+        let appType;
+        if (item.applyAtOrderCheckout) {
+          appType = TaxApplicationType.CHECKOUT;
+        } else {
+          appType = TaxApplicationType.OPTIONAL;
+        }
+        let scope;
+        if (item.selectedCategories.length > 0) {
+          scope = TaxScopeType.CATEGORY;
+        } else if (item.productSetup.length > 0) {
+          scope = TaxScopeType.PRODUCT;
+        } else {
+          scope = TaxScopeType.ALL;
+        }
+        // Example: make API call — replace with your actual API call
+        const response = await settingsService.createTax(
+          outletId as number,
+          item.name,
+          item.rate,
+          appType,
+          scope
+        );
+        console.log(response, "This is the response");
+      })
+    );
+    console.log(results);
+
+    console.log(newData);
     // Here you would typically save to your backend
     alert("Tax configuration saved successfully!");
   };
@@ -109,7 +198,7 @@ export const AccountSettingsModal: React.FC<{
                 key={tax.id}
                 tax={tax}
                 index={index}
-                categories={categories}
+                categories={categoriesList}
                 onUpdate={updateTax}
                 onAddCategory={addNewCategory}
               />
@@ -132,7 +221,7 @@ export const AccountSettingsModal: React.FC<{
             </button>
           </div>
         )}
-        {activeTab === "service" && <ServiceCharge />}{" "}
+        {activeTab === "service" && <ServiceCharge />}
       </div>
     </Modal>
   );
@@ -149,7 +238,6 @@ interface TaxItem {
   rate: number;
   includeInMenuPrices: boolean;
   applyAtOrderCheckout: boolean;
-  applyAtOrderCheckoutOptional: boolean;
   productSetup: "all" | "categories" | "certain";
   selectedCategories: Record<string, boolean>;
 }
@@ -196,7 +284,7 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
             value={tax.name}
             onChange={(e) => onUpdate(tax.id, { name: e.target.value })}
             placeholder={getNamePlaceholder()}
-            className="outline-none text-[12px]  border-2 border-[#D1D1D1] w-full px-3.5 py-2.5 bg-[#FAFAFC] rounded-[10px]"
+            className="outline-none text-[12px] border-2 border-[#D1D1D1] w-full px-3.5 py-2.5 bg-[#FAFAFC] rounded-[10px]"
           />
         </div>
         <div>
@@ -204,14 +292,13 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
             Tax Rate (%)
           </label>
           <input
-            type="text"
+            type="number"
             value={tax.rate}
             onChange={(e) =>
               onUpdate(tax.id, { rate: parseFloat(e.target.value) || 0 })
             }
             placeholder="0.00"
-            step="0.01"
-            className="outline-none text-[12px]  border-2 border-[#D1D1D1] w-full px-3.5 py-2.5 bg-[#FAFAFC] rounded-[10px]"
+            className="outline-none text-[12px] border-2 border-[#D1D1D1] w-full px-3.5 py-2.5 bg-[#FAFAFC] rounded-[10px]"
           />
         </div>
       </div>
@@ -430,7 +517,7 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
   );
 };
 
-const ServiceCharge: React.FC = ({}) => {
+const ServiceCharge: React.FC = () => {
   const [serviceName, setServiceName] = useState("");
   const [serviceRate, setServiceRate] = useState("");
   const [selectedOption, setSelectedOption] = useState<TaxApplicationType>(
@@ -438,18 +525,38 @@ const ServiceCharge: React.FC = ({}) => {
   );
   const outlet = useSelectedOutlet();
   const outletId = outlet?.outlet.id as unknown as string;
+  console.log(outlet, "This is outletd")
+  useEffect(() => {
+    if (!outlet || !outlet.outlet?.serviceCharges?.charges?.length) return;
+
+    const firstCharge = outlet.outlet.serviceCharges.charges[0];
+    console.log(outlet, "This is charge");
+
+    if (firstCharge?.name) setServiceName(firstCharge.name);
+    if (firstCharge?.rate) setServiceRate(String(firstCharge.rate));
+    if (firstCharge?.applicationType) {
+      setSelectedOption(firstCharge.applicationType as TaxApplicationType);
+    }
+  }, [outlet]);
+
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
-    console.log(outletId, serviceName, Number(serviceRate), selectedOption);
     e.preventDefault();
+    console.log(outletId, serviceName, Number(serviceRate), selectedOption);
     if (!outletId) return null;
-    const response = await settingsService.createCharges(
-      outletId,
-      serviceName,
-      Number(serviceRate),
-      selectedOption
-    );
-    console.log(response, "This is the response");
+
+    try {
+      const response = await settingsService.createCharges(
+        outletId,
+        serviceName,
+        Number(serviceRate),  
+        selectedOption
+      );
+      console.log(response, "This is the response");
+    } catch (error) {
+      console.error("Error creating service charge:", error);
+    }
   };
 
   return (
@@ -461,7 +568,6 @@ const ServiceCharge: React.FC = ({}) => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Service Charge Name */}
             <div>
               <label
                 htmlFor="serviceName"
@@ -479,7 +585,6 @@ const ServiceCharge: React.FC = ({}) => {
               />
             </div>
 
-            {/* Service Charge Rate */}
             <div>
               <label
                 htmlFor="serviceRate"
@@ -488,7 +593,7 @@ const ServiceCharge: React.FC = ({}) => {
                 Service Charge Rate (%)
               </label>
               <input
-                type="text"
+                type="number"
                 id="serviceRate"
                 value={serviceRate}
                 onChange={(e) => setServiceRate(e.target.value)}
@@ -500,7 +605,6 @@ const ServiceCharge: React.FC = ({}) => {
             </div>
           </div>
 
-          {/* Radio Options */}
           <div className="space-y-3">
             <div className="flex items-center">
               <div className="relative">
@@ -508,12 +612,10 @@ const ServiceCharge: React.FC = ({}) => {
                   type="radio"
                   id="includeMenu"
                   name="serviceChargeOption"
-                  value="menu"
+                  value={TaxApplicationType.INCLUDED}
                   checked={selectedOption === TaxApplicationType.INCLUDED}
                   onChange={(e) =>
-                    setSelectedOption(
-                      e.target.value as TaxApplicationType.INCLUDED
-                    )
+                    setSelectedOption(e.target.value as TaxApplicationType)
                   }
                   className="sr-only"
                 />
@@ -545,12 +647,10 @@ const ServiceCharge: React.FC = ({}) => {
                   type="radio"
                   id="applyCheckout"
                   name="serviceChargeOption"
-                  value="checkout"
-                  checked={selectedOption === "checkout"}
+                  value={TaxApplicationType.CHECKOUT}
+                  checked={selectedOption === TaxApplicationType.CHECKOUT}
                   onChange={(e) =>
-                    setSelectedOption(
-                      e.target.value as TaxApplicationType.CHECKOUT
-                    )
+                    setSelectedOption(e.target.value as TaxApplicationType)
                   }
                   className="sr-only"
                 />
@@ -565,7 +665,7 @@ const ServiceCharge: React.FC = ({}) => {
                         : "border-gray-300"
                     }`}
                   >
-                    {selectedOption === "checkout" && (
+                    {selectedOption === TaxApplicationType.CHECKOUT && (
                       <div className="w-2 h-2 rounded-full bg-white"></div>
                     )}
                   </div>
@@ -582,12 +682,10 @@ const ServiceCharge: React.FC = ({}) => {
                   type="radio"
                   id="applyTax"
                   name="serviceChargeOption"
-                  value="tax"
+                  value={TaxApplicationType.OPTIONAL}
                   checked={selectedOption === TaxApplicationType.OPTIONAL}
                   onChange={(e) =>
-                    setSelectedOption(
-                      e.target.value as TaxApplicationType.OPTIONAL
-                    )
+                    setSelectedOption(e.target.value as TaxApplicationType)
                   }
                   className="sr-only"
                 />
@@ -613,14 +711,12 @@ const ServiceCharge: React.FC = ({}) => {
               </div>
             </div>
           </div>
-
-          {/* Submit Button */}
         </form>
       </div>
 
       <button
         onClick={handleSubmit}
-        type="submit"
+        type="button"
         className="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-4 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
       >
         Create Service Charge

@@ -25,6 +25,8 @@ import settingsService from "@/services/settingsService";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import { useBusinessStore } from "@/stores/useBusinessStore";
+import { Business } from "@/types/business";
+import { useUserStore } from "@/stores/useUserStore";
 
 interface BusinessDetailsModalProps {
   isOpen: boolean;
@@ -41,7 +43,8 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   outletId,
 }) => {
   const outlet = useSelectedOutlet();
-  const business = useBusiness();
+  const business = useBusiness() as Business;
+  const { user } = useUserStore();
   const [details, setDetails] = useState<BusinessDetailsType>({
     name: "",
     email: "",
@@ -53,7 +56,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     businessType: "",
     postalCode: "",
   });
-  const {fetchBusinessData} = useBusinessStore()
+  const { fetchBusinessData } = useBusinessStore();
 
   const [newBusinessType, setNewBusinessType] = useState("");
   const [businessTypes, setBusinessTypes] = useState(defaultBusinessTypes);
@@ -100,13 +103,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   );
 
   // Function to get country flag emoji
-  const getCountryFlag = (isoCode: string) => {
-    return isoCode
-      .toUpperCase()
-      .replace(/./g, (char) =>
-        String.fromCodePoint(char.charCodeAt(0) + 127397)
-      );
-  };
 
   // Update available states when country changes
   useEffect(() => {
@@ -170,19 +166,25 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
       if (country) {
         setSelectedCountry(country);
 
+        // Get states for the selected country
+        const states = State.getStatesOfCountry(country.isoCode);
+        setAvailableStates(states);
+
         // Set initial state selection
         if (outlet.outlet?.state) {
-          const states = State.getStatesOfCountry(country.isoCode);
           const state = states.find((s) => s.name === outlet.outlet.state);
           if (state) {
             setSelectedState(state);
 
+            // Get cities for the selected state
+            const cities = City.getCitiesOfState(
+              country.isoCode,
+              state.isoCode
+            );
+            setAvailableCities(cities);
+
             // Set initial city selection
             if (outlet.outlet.city) {
-              const cities = City.getCitiesOfState(
-                country.isoCode,
-                state.isoCode
-              );
               const city = cities.find((c) => c.name === outlet.outlet.city);
               if (city) {
                 setSelectedCity(city);
@@ -196,8 +198,15 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     if (business?.businessType) {
       setBusinessType(business.businessType);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [business]);
+     
+  }, [business, outlet]);
+
+  useEffect(() => {
+    // Only set uploadedImageUrl if there's no existing logo or if it's different
+    if (outlet?.outlet.logoUrl && !uploadedImageUrl) {
+      setUploadedImageUrl(outlet.outlet.logoUrl);
+    }
+  }, [outlet?.outlet.logoUrl, uploadedImageUrl]);
 
   const handleBusinessTypeSelect = (type: string) => {
     setBusinessType(type);
@@ -245,7 +254,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (phoneError) return;
-    console.log(phoneError, "This is the error")
+    console.log(phoneError, "This is the error");
 
     const { country } = details;
 
@@ -282,7 +291,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
       setSelectedCity(null);
       onClose();
     }
-    await fetchBusinessData()
+    await fetchBusinessData();
   };
 
   const handleChange = (field: keyof BusinessDetailsType, value: string) => {
@@ -431,12 +440,10 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
           <Input
             label="Email"
             type="email"
-            value={details.email}
-            onChange={(e) => handleChange("email", e.target.value)}
-            placeholder="business@example.com"
-            className={`w-full px-4 py-3 text-left bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors ${getDisabledStyles(
-              details.email as string
-            )}`}
+            disabled
+            value={user?.email || "Email address"}
+            placeholder={user?.email as string}
+            className={`w-full px-4 py-3 text-left bg-gray-100 text-gray-500 rounded-lg shadow-sm cursor-not-allowed`}
           />
 
           <Input
@@ -528,10 +535,17 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
                           className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between group"
                         >
                           <span className="flex items-center text-gray-900">
-                            <span className="text-xl mr-2">
-                              {getCountryFlag(country.isoCode)}
+                            <span className="flex items-center">
+                              <Image
+                                src={`https://flagcdn.com/24x18/${country.isoCode.toLowerCase()}.png`}
+                                alt={country.name + " flag"}
+                                className="w-6 h-4 mr-2 rounded-sm border border-gray-200 object-cover"
+                                style={{ display: "inline-block" }}
+                                width={20}
+                                height={20}
+                              />
+                              {country.name}
                             </span>
-                            <span>{country.name}</span>
                           </span>
                           {selectedCountry?.isoCode === country.isoCode && (
                             <Check className="h-4 w-4 text-[#15BA5C]" />
@@ -820,101 +834,101 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
             Logo
           </label>
 
-          {uploadedImageUrl ||
-            ((outlet?.outlet.logoUrl as string) && (
-              <div className="w-full">
-                <section className="relative h-[250px] w-full ">
-                  <Image
-                    src={uploadedImageUrl || (outlet?.outlet.logoUrl as string)}
-                    alt="Business logo"
-                    fill
-                    className="object-contain"
-                    sizes="100vw"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = "none";
-                      target.nextElementSibling?.classList.remove("hidden");
-                    }}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={handleDeleteImage}
-                    className="absolute px-2.5 py-2.5 flex items-center justify-center rounded-full top-2.5 right-0 z-50 bg-[#15BA5C] text-white font-bold transition-colors"
-                    title="Delete logo"
-                  >
-                    <CiEdit className="h-5 w-5" />
-                  </button>
-                </section>
-              </div>
-            ))}
-
-          {/* Only show upload area if no image is uploaded */}
-          {!uploadedImageUrl ||
-            (outlet?.outlet.logoUrl && (
-              <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                  isDragOver
-                    ? "border-[#15BA5C] bg-green-50"
-                    : uploadError
-                    ? "border-red-300 hover:border-red-400 hover:bg-red-50"
-                    : "border-gray-300 hover:border-[#15BA5C] hover:bg-gray-50"
-                } ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={handleUploadClick}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.svg"
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                  disabled={isUploading}
+          {/* Show existing logo if available */}
+          {uploadedImageUrl || outlet?.outlet.logoUrl ? (
+            <div className="w-full mb-4">
+              <section className="relative h-[250px] w-full border border-gray-200 rounded-lg overflow-hidden">
+                <Image
+                  src={uploadedImageUrl || (outlet?.outlet.logoUrl as string)}
+                  alt="Business logo"
+                  fill
+                  className="object-contain"
+                  sizes="100vw"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    // Handle error state if needed
+                  }}
                 />
 
-                <div className="flex flex-col items-center">
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-12 h-12 text-[#15BA5C] mb-4 animate-spin" />
-                      <p className="text-[#15BA5C] font-medium mb-1">
-                        Uploading...
+                <button
+                  type="button"
+                  onClick={handleDeleteImage}
+                  className="absolute px-2.5 py-2.5 flex items-center justify-center rounded-full top-2.5 right-2.5 z-50 bg-[#15BA5C] text-white font-bold transition-colors hover:bg-[#13A652]"
+                  title="Change logo"
+                >
+                  <CiEdit className="h-5 w-5" />
+                </button>
+              </section>
+            </div>
+          ) : (
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                isDragOver
+                  ? "border-[#15BA5C] bg-green-50"
+                  : uploadError
+                  ? "border-red-300 hover:border-red-400 hover:bg-red-50"
+                  : "border-gray-300 hover:border-[#15BA5C] hover:bg-gray-50"
+              } ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={handleUploadClick}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png,.svg"
+                onChange={handleFileInputChange}
+                className="hidden"
+                disabled={isUploading}
+              />
+
+              <div className="flex flex-col items-center">
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-12 h-12 text-[#15BA5C] mb-4 animate-spin" />
+                    <p className="text-[#15BA5C] font-medium mb-1">
+                      Uploading...
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Please wait while we upload your logo
+                    </p>
+                  </>
+                ) : uploadError ? (
+                  <>
+                    <Upload className="w-12 h-12 text-red-400 mb-4" />
+                    <div className="text-center">
+                      <p className="text-red-600 font-medium mb-1">
+                        Upload failed
                       </p>
                       <p className="text-sm text-gray-600">
-                        Please wait while we upload your logo
+                        Click to try again
                       </p>
-                    </>
-                  ) : uploadError ? (
-                    <>
-                      <Upload className="w-12 h-12 text-red-400 mb-4" />
-                      <div className="text-center">
-                        <p className="text-red-600 font-medium mb-1">
-                          Upload failed
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Click to try again
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-16 h-16 bg-yellow-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                        🏪
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[#15BA5C] font-medium mb-1">
-                          Click to upload or Drag your logo here
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Max file: 5mb, PNG, JPG, SVG
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 bg-yellow-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                      🏪
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[#15BA5C] font-medium mb-1">
+                        {uploadedImageUrl || outlet?.outlet.logoUrl
+                          ? "Click to change logo or Drag new logo here"
+                          : "Click to upload or Drag your logo here"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Max file: 5mb, PNG, JPG, SVG
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* Upload area - always show for uploading/changing logo */}
 
           {/* Error Message */}
           {uploadError && (

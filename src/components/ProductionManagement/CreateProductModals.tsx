@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+//@ts-nocheck
 "use client";
 import { Clock3, Plus, Tag, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -5,22 +7,23 @@ import { Switch } from "../Modals/Settings/ui/Switch";
 import { DropdownSelector } from "./ui/DropdownSelector";
 import FileUploadComponent from "../Upload/FileUploadComponent";
 import getWidthClass from "@/utils/getWidthClass";
-import { useBusinessStore } from "@/stores/useBusinessStore";
 import productManagementService from "@/services/productManagementService";
 import { ApiResponseType } from "@/types/httpTypes";
 import Image from "next/image";
-import { ConvertTimeToSeconds } from "@/utils/getTimers";
 import { useProductManagementStore } from "@/stores/useProductManagementStore";
+import { toast } from "sonner";
+import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
+// import Pagination from "../Pagination/Pagination";
+// import { formatDate } from "@/utils/getTimers";
+import { calculateTierPrice } from "@/utils/pricingRule";
 import { SystemDefaults } from "@/types/systemDefaults";
 
 interface CreateProductModalsProps {
-  onClose: () => void;
   size?: "sm" | "md" | "lg" | "xl" | "full" | number;
   isOpen: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onClose:any
 }
-
-
-
 
 const units = ["Mg", "Kg", "T"];
 
@@ -57,36 +60,40 @@ interface Allergen {
 }
 
 const CreateProductModals: React.FC<CreateProductModalsProps> = ({
-  onClose,
   isOpen,
   size = "md",
+  onClose
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const { categories, preparationArea, packagingMethod} = useProductManagementStore()
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const { selectedOutletId } = useBusinessStore();
+  // Zustand store
+  const {
+    setProductClicked,
+    selectedProduct,
+    addProduct,
+    fetchProductPriceHistory,
+    categories,
+    preparationArea,
+    packagingMethod,
+  } = useProductManagementStore();
+
+  const outlet = useSelectedOutlet();
+  const outletId = outlet?.outlet.id;
+  console.log(outletId);
+  const outletsData = useSelectedOutlet();
+  console.log(outletsData?.outlet.priceTier, "This is the businessDATA");
+
   // Form data state
   const [formData, setFormData] = useState<ProductFormData>({
     productName: "",
     category: "",
     sellingPrice: "",
     hasPriceTiers: false,
-    priceTiers: [
-      {
-        id: "retail",
-        label: "Retail Price Tier",
-        price: "£40",
-        checked: false,
-      },
-      {
-        id: "wholesale",
-        label: "Wholesale Price Tier",
-        price: "£35",
-        checked: false,
-      },
-    ],
+    priceTiers: [], // Start with empty array, will be populated from outlet data
     description: "",
     preparationArea: "",
     hasAllergens: false,
@@ -114,9 +121,27 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
     packagingMethod: "",
     imageUrl: "",
   });
-  
 
-  
+  useEffect(() => {
+    if (outletsData?.outlet.priceTier) {
+      const availablePriceTiers = outletsData.outlet.priceTier.map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (tier: any) => ({
+          id: tier.id,
+          name: tier.name,
+          description: tier.description,
+          pricingRules: tier.pricingRules,
+          isActive: tier.isActive,
+          checked: selectedProduct?.priceTierId === tier.id, // Check if this tier is selected for the product
+        })
+      );
+
+      setFormData((prev) => ({
+        ...prev,
+        priceTiers: availablePriceTiers,
+      }));
+    }
+  }, [outletsData?.outlet.priceTier, selectedProduct?.priceTierId]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
@@ -170,10 +195,64 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (selectedProduct?.id) {
+      fetchProductPriceHistory(selectedProduct.id);
+    }
+    if (selectedProduct) {
+      console.log(selectedProduct);
+
+      // Get available price tiers from outlet data
+      const availablePriceTiers =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        outletsData?.outlet.priceTier?.map((tier: any) => ({
+          id: tier.id,
+          name: tier.name,
+          description: tier.description,
+          pricingRules: tier.pricingRules,
+          isActive: tier.isActive,
+          checked: selectedProduct.priceTierId === tier.id, // Check if this tier is selected
+        })) || [];
+        
+
+      setFormData({
+        productName: selectedProduct.name,
+        category: selectedProduct.category,
+        sellingPrice: selectedProduct.price?.toString() || "",
+        hasPriceTiers: !!selectedProduct.priceTierId,
+        priceTiers: availablePriceTiers,
+        description: selectedProduct.description || "",
+        preparationArea: selectedProduct.preparationArea || "",
+        hasAllergens: !!selectedProduct.allergenList,
+        allergens: [],
+        leadTimeHours:
+          Math.floor((selectedProduct.leadTime || 0) / 3600).toString() || "",
+        leadTimeMinutes:
+          Math.floor(
+            ((selectedProduct.leadTime || 0) % 3600) / 60
+          ).toString() || "",
+        leadTimeSeconds:
+          ((selectedProduct.leadTime || 0) % 60).toString() || "",
+        weight: selectedProduct.weight?.toString() || "",
+        weightUnit: selectedProduct.weightScale || "Kg",
+        packagingMethod: selectedProduct.packagingArea || "",
+        imageUrl: selectedProduct.logoUrl as string,
+      });
+    }
+  }, [
+    fetchProductPriceHistory,
+    selectedProduct,
+    outletsData?.outlet.priceTier,
+  ]);
+
   if (!isOpen && !isVisible) return null;
 
   const handleProductSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Get the selected price tier ID
+    const selectedPriceTier = formData.priceTiers.find((tier) => tier.checked);
+    const selectedPriceTierId = selectedPriceTier ? selectedPriceTier.id : null;
 
     // VALIDATION STEP
     const requiredFields = [
@@ -195,32 +274,29 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
     });
 
     if (emptyFields.length > 0) {
-      alert(`Please fill all required fields: ${emptyFields.join(", ")}`);
+      toast.error(`Please fill all required fields: ${emptyFields.join(", ")}`);
       return;
     }
 
     // Optional: Additional numeric validation
     if (isNaN(parseFloat(formData.sellingPrice))) {
-      alert("Selling price must be a valid number.");
+      toast.error("Selling price must be a valid number.");
       return;
     }
 
     if (isNaN(parseFloat(formData.weight))) {
-      alert("Weight must be a valid number.");
+      toast.error("Weight must be a valid number.");
       return;
     }
-    console.log("Form data before submission:", formData);
-    console.log("Selected Outlet ID:", selectedOutletId);
 
     // CREATE PRODUCT OBJECT
     const productData = {
       name: formData.productName,
-      description: formData.description,
+      description: formData.description || null,
       category: formData.category,
       price: parseFloat(formData.sellingPrice),
       preparationArea: formData.preparationArea,
-      hasPriceTier: formData.hasPriceTiers,
-      priceTierId: formData.hasPriceTiers ? 1 : 1,
+      priceTierId: selectedPriceTierId, // Use the actual selected tier ID
       allergenList: formData.hasAllergens
         ? {
             allergies: formData.allergens
@@ -229,38 +305,46 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
           }
         : null,
       logoUrl: formData.imageUrl || "",
-      outletId: selectedOutletId ?? 1,
+      outletId: outletId,
       isActive: true,
+      isMainLocation: true,
       logoHash: null,
-      packagingArea: formData.packagingMethod,
-      weight: Number( formData.weight),
-      weightScale: formData.weightUnit,
-      leadTime: ConvertTimeToSeconds({
-        leadTimeHours: formData.leadTimeHours,
-        leadTimeMinutes: formData.leadTimeMinutes,
-        leadTimeSeconds: formData.leadTimeSeconds,
-      }),
     };
-    console.log("Selected Outlet ID:", selectedOutletId);
-    console.log("Product data to be submitted:", productData);
-    
+    console.log(productData, )
 
-    // SUBMIT
-    const response = (await productManagementService.createProduct(
-      selectedOutletId as number,
-      productData
-    )) as ApiResponseType;
+    try {
 
-    if (response.status) {
-      console.log("Product created successfully:", response);
-      onClose();
-    } else {
-      console.log("Error creating product:", response);
+        // CREATE new product
+        const response = (await productManagementService.createProduct(
+          outletId as number,
+          productData
+        )) as ApiResponseType;
+
+        if (response.status) {
+          // Add the new product to store (assuming API returns the created product)
+          const newProduct = {
+            ...productData,
+            id: response.data?.id || Date.now(), // Fallback ID
+          };
+          addProduct(newProduct);
+          toast.success("Product created successfully");
+          setProductClicked(false);
+        } else {
+          toast.error("Error creating product");
+        }
+      
+    } catch (error) {
+      console.error("Error saving product:", error);
+      toast.error("An error occurred while saving the product");
     }
   };
 
+ 
+
   return (
-    <section className="fixed inset-0 bg-black/20 backdrop-blur-sm flex justify-end z-50 transition-opacity duration-300 ease-in-out">
+    <section
+      className={`fixed inset-0 bg-black/20 backdrop-blur-sm flex ${"justify-end"} z-50 transition-opacity duration-300 ease-in-out`}
+    >
       <section
         className={`bg-white shadow-xl rounded-l-lg ${getWidthClass(
           size
@@ -271,9 +355,11 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
         {/* Non-scrollable header */}
         <div className="shrink-0 px-5">
           <div className="flex items-center justify-between py-5">
-            <h3 className="text-[#1C1B20] font-bold text-2xl">
-              Create a Product
-            </h3>
+            <div className="">
+              <h3 className="text-[#1C1B20] font-bold text-2xl">
+                Create a Product
+              </h3>
+            </div>
             <button
               onClick={onClose}
               className="bg-[#15BA5C] px-1.5 py-1.5 rounded-full"
@@ -281,10 +367,8 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
               <X className="h-4 w-4 text-white" />
             </button>
           </div>
-          <hr className="border border-[#E6E6E6] px-2.5" />
         </div>
 
-        {/* Scrollable form content */}
         <div className="flex-1 overflow-y-auto py-5 space-y-4 pr-2 px-5">
           <form className="flex flex-col gap-7" onSubmit={handleProductSave}>
             <div className="flex flex-col gap-2.5">
@@ -318,10 +402,11 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
                 <span className="text-red-600">*</span>
               </label>
               <DropdownSelector
-              madeFor={SystemDefaults.CATEGORY}
+                outletId={outletId}
+                madeFor={SystemDefaults.CATEGORY}
                 searchPlaceholder="Search Product Category"
                 items={categories}
-                placeholder="Select Category"
+                placeholder={formData.category || "Select a category"}
                 onSelect={(item) => handleInputChange("category", item)}
               />
             </div>
@@ -366,6 +451,7 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
               {formData.hasPriceTiers && (
                 <div className="flex flex-col gap-3.5 mt-4">
                   <PricingTierSelector
+                    price={formData.sellingPrice}
                     tiers={formData.priceTiers}
                     onTiersChange={(tiers) =>
                       handleInputChange("priceTiers", tiers)
@@ -396,10 +482,13 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
                 <span className="text-red-600">*</span>
               </label>
               <DropdownSelector
-              madeFor={SystemDefaults.PREPARATION_AREA}
+                outletId={outletId}
+                madeFor={SystemDefaults.PREPARATION_AREA}
                 searchPlaceholder="Search Preparation Area"
                 items={preparationArea}
-                placeholder="Select a preparation area"
+                placeholder={
+                  formData.preparationArea || "Select a preparation area"
+                }
                 onSelect={(item) => handleInputChange("preparationArea", item)}
               />
             </div>
@@ -521,10 +610,13 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
                 <span className="text-red-600">*</span>
               </label>
               <DropdownSelector
-              madeFor={SystemDefaults.PACKAGING_METHOD}
+                outletId={outletId}
+                madeFor={SystemDefaults.PACKAGING_METHOD}
                 searchPlaceholder="Search packaging method"
                 items={packagingMethod}
-                placeholder="Select a packaging method"
+                placeholder={
+                  formData.packagingMethod || "Select a packaging method"
+                }
                 onSelect={(item) => handleInputChange("packagingMethod", item)}
               />
             </div>
@@ -545,13 +637,14 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
                 />
               </div>
             )}
-
-            <button
-              className="w-full bg-[#15BA5C] text-[#FFFFFF] text-[14px] font-medium py-2.5 rounded-[10px]"
-              type="submit"
-            >
-              Save Product
-            </button>
+            <div className="flex items-center gap-3.5">
+              <button
+                className="w-full bg-[#15BA5C] text-[#FFFFFF] hover:border-[#15BA5C] hover:border hover:bg-white hover:text-[#15BA5C] text-[14px] font-medium py-2.5 rounded-[10px]"
+                type="submit"
+              >
+                Save Product
+              </button>
+            </div>
           </form>
         </div>
       </section>
@@ -562,27 +655,25 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
 export default CreateProductModals;
 
 // Updated PricingTierSelector Component
-interface PricingTier {
-  id: string;
-  label: string;
-  price: string;
-  checked: boolean;
-}
-
 interface PricingTierSelectorProps {
   tiers: PricingTier[];
+  price: number;
   onTiersChange: (tiers: PricingTier[]) => void;
 }
 
 const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
   tiers,
+  price,
   onTiersChange,
 }) => {
-  const handleTierChange = (id: string) => {
-    const updatedTiers = tiers.map((tier) => ({
-      ...tier,
-      checked: tier.id === id,
-    }));
+  const handleTierChange = (id: number) => {
+    // Changed from string to number
+    const updatedTiers = tiers.map(
+      (tier) =>
+        tier.id === id
+          ? { ...tier, checked: !tier.checked }
+          : { ...tier, checked: false } // Only allow one selection
+    );
     onTiersChange(updatedTiers);
   };
 
@@ -595,22 +686,41 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
             index !== tiers.length - 1 ? "border-b border-gray-100" : ""
           }`}
         >
+          {console.log(tiers)}
           <div className="flex items-center gap-4 justify-between w-full">
             <div className="flex items-center gap-3.5">
               <div className="border border-[#E6E6E6] px-2.5 py-2.5 rounded-full">
                 <Tag className="h-[15px] w-[15px] text-[#15BA5C]" />
               </div>
-              <label
-                htmlFor={tier.id}
-                className="text-[#1E1E1E] text-[14px] font-normal cursor-pointer select-none"
-              >
-                {tier.label} - {tier.price}
-              </label>
+              <div className="flex flex-col">
+                <label
+                  htmlFor={tier.id.toString()}
+                  className="text-[#1E1E1E] text-[14px] flex items-center gap-1.5 font-medium cursor-pointer select-none"
+                >
+                  <span>{tier.name}</span> -{" "}
+                  {tier.pricingRules.markupPercentage > 0 && (
+                    <span>
+                      Markup: {tier.pricingRules.markupPercentage}% - Value:
+                      {calculateTierPrice(price, {
+                        ...tier.pricingRules,
+                      })}
+                    </span>
+                  )}
+                  {tier.pricingRules.discountPercentage > 0 && (
+                    <span>
+                      Discount: {tier.pricingRules.discountPercentage}% - Value:
+                      {calculateTierPrice(price, {
+                        ...tier.pricingRules,
+                      })}
+                    </span>
+                  )}
+                </label>
+              </div>
             </div>
             <div className="relative">
               <input
                 type="checkbox"
-                id={tier.id}
+                id={tier.id.toString()}
                 checked={tier.checked}
                 onChange={() => handleTierChange(tier.id)}
                 className="sr-only"

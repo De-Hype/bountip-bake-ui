@@ -221,6 +221,7 @@ console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
           isActive: tier.isActive,
           checked: selectedProduct.priceTierId === tier.id, // Check if this tier is selected
         })) || [];
+        console.log(selectedProduct, 'This is the selected product')
 
       setFormData({
         productName: selectedProduct.name,
@@ -231,7 +232,7 @@ console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
         description: selectedProduct.description || "",
         preparationArea: selectedProduct.preparationArea || "",
         hasAllergens: !!selectedProduct.allergenList,
-        allergens: [],
+        allergens: selectedProduct.allergenList,
         leadTimeHours:
           Math.floor((selectedProduct.leadTime || 0) / 3600).toString() || "",
         leadTimeMinutes:
@@ -480,6 +481,7 @@ console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
                     <span className="text-red-600">*</span>
                   </label>
                   <DropdownSelector
+                    outletId={outletId}
                     searchPlaceholder="Search Product Category"
                     items={categories}
                     placeholder={formData.category || "Select a category"}
@@ -527,7 +529,7 @@ console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
                   {formData.hasPriceTiers && (
                     <div className="flex flex-col gap-3.5 mt-4">
                       <PricingTierSelector
-                      price={formData.sellingPrice}
+                        price={formData.sellingPrice}
                         tiers={formData.priceTiers}
                         onTiersChange={(tiers) =>
                           handleInputChange("priceTiers", tiers)
@@ -558,9 +560,12 @@ console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
                     <span className="text-red-600">*</span>
                   </label>
                   <DropdownSelector
+                    outletId={outletId}
                     searchPlaceholder="Search Preparation Area"
                     items={preparationArea}
-                    placeholder={formData.preparationArea || "Select a preparation area"}
+                    placeholder={
+                      formData.preparationArea || "Select a preparation area"
+                    }
                     onSelect={(item) =>
                       handleInputChange("preparationArea", item)
                     }
@@ -687,9 +692,12 @@ console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
                     <span className="text-red-600">*</span>
                   </label>
                   <DropdownSelector
+                    outletId={outletId}
                     searchPlaceholder="Search packaging method"
                     items={packagingMethod}
-                    placeholder={formData.packagingMethod || "Select a packaging method"}
+                    placeholder={
+                      formData.packagingMethod || "Select a packaging method"
+                    }
                     onSelect={(item) =>
                       handleInputChange("packagingMethod", item)
                     }

@@ -314,6 +314,7 @@ const AuthForm = ({ mode }: Props) => {
         isPin: response.data.user.isPin,
       };
 
+
       if (userData.isPin) {
         setCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER, userData);
         setCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS, {
@@ -362,7 +363,7 @@ const AuthForm = ({ mode }: Props) => {
         });
 
         if (response.data?.tokens) {
-          setCookie(COOKIE_NAMES.BOUNTIP_REGISTERED_USERS, {
+          setCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS, {
             accessToken: response.data.tokens.accessToken,
             refreshToken: response.data.tokens.refreshToken,
           });

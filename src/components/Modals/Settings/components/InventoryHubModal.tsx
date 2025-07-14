@@ -37,6 +37,8 @@ export const InventoryHubModal: React.FC<{
     }
   };
 
+  
+
   return (
     <Modal
       image={SettingFiles.InventoryIcon}

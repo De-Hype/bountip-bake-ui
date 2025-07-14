@@ -4,6 +4,7 @@ import {
   InventoryHubType,
   OperatingHoursType,
   TaxApplicationType,
+  TaxScopeType,
 } from "@/types/settingTypes";
 
 function getLabelEnabled(
@@ -139,20 +140,23 @@ class SettingsService {
     );
   }
 
-  async createTask(
+  async createTax(
     outletId: string | number,
     name: string,
     rate: number,
-    applicationType: TaxApplicationType
+    applicationType: TaxApplicationType,
+    scope: TaxScopeType,
+    categoryIdList?: string[],
+    productIdList?:number[]
   ) {
     return this.request.post(
       `/outlet/${outletId}/taxes`,
-      { name, rate, applicationType },
+      { name, rate, applicationType, scope, categoryIdList, productIdList },
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }
 
-  async editTask(
+  async editTax(
     outletId: string | number,
     tierId: string | number,
     name: string,
@@ -166,7 +170,7 @@ class SettingsService {
     );
   }
 
-  async deleteTask(outletId: string | number, tierId: string | number) {
+  async deleteTax(outletId: string | number, tierId: string | number) {
     return this.request.delete(
       `/outlet/${outletId}/taxes/${tierId}`,
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
@@ -200,10 +204,7 @@ class SettingsService {
     );
   }
 
-  async deleteCharges(
-    outletId: string | number,
-    chargeId:string | number
-  ) {
+  async deleteCharges(outletId: string | number, chargeId: string | number) {
     return this.request.post(
       `/outlet/${outletId}/service-charges/${chargeId}`,
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS

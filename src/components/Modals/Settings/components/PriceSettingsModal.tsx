@@ -32,7 +32,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { selectedOutletId, outlets } = useBusinessStore();
+  const { selectedOutletId, outlets, fetchBusinessData } = useBusinessStore();
   const [tiers, setTiers] = useState<PriceTier[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const priceTierFormRef = useRef<{
@@ -86,6 +86,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
     if (result.status) {
       setTiers((prev) => prev.filter((t) => t.id !== id));
       toast.success("Price tier deleted successfully");
+      await fetchBusinessData();
     } else {
       toast.error("Failed to delete price tier");
     }
@@ -177,6 +178,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
       } else {
         toast.success("All price tiers saved successfully.");
         // Mark all tiers as saved and add the pending tier to the list
+
         setTiers((prev) => {
           const updatedTiers = prev.map((tier) => ({ ...tier, isNew: false }));
           // Add the pending tier if it exists
@@ -188,6 +190,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
 
         // Clear the form after successful save
         priceTierFormRef.current?.resetForm();
+        await fetchBusinessData()
       }
     } catch (error) {
       console.error("Failed to save tiers", error);
