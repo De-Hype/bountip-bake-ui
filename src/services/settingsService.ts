@@ -25,6 +25,7 @@ class SettingsService {
       `/outlet/${outletId}`,
       {
         name: data.name,
+        email: data.email,
         address: data.address,
         phoneNumber: data.phone,
         city: data.city,
@@ -147,7 +148,7 @@ class SettingsService {
     applicationType: TaxApplicationType,
     scope: TaxScopeType,
     categoryIdList?: string[],
-    productIdList?:number[]
+    productIdList?: number[]
   ) {
     return this.request.post(
       `/outlet/${outletId}/taxes`,
@@ -217,6 +218,50 @@ class SettingsService {
     imageUrl: string
   ) {
     const payload = {
+      customizedLogoUrl: imageUrl, // Set this if you have it
+      paperSize: formData.paperSize === "tape" ? "80mm" : "A4",
+      fontStyle: "Arial", // or whatever default/font picker value you're using
+      showBakeryName: formData.showBakeyName,
+      customHeader: formData.header,
+      showPaymentSuccessText: formData.showPaymentSuccess,
+      customSuccessText: formData.customBusinessText,
+      showTotalPaidAtTop: formData.showBusinessLine,
+      showLabelName: getLabelEnabled(formData.labelItems, "Label Name"),
+      showLabelType: getLabelEnabled(formData.labelItems, "Label Type"),
+      showProductName: getLabelEnabled(formData.labelItems, "Product Name"),
+      showProductBarCode: getLabelEnabled(formData.labelItems, "Barcode"),
+      showExpiryDate: getLabelEnabled(formData.labelItems, "Best Before"),
+      showWeight: getLabelEnabled(formData.labelItems, "Product Weight"),
+      showBatchNumber: getLabelEnabled(formData.labelItems, "Best Number"),
+      showManufacturingDate: getLabelEnabled(
+        formData.labelItems,
+        "ManufacturedDate"
+      ),
+      showIngredientsSummary: getLabelEnabled(
+        formData.labelItems,
+        "Business Summary"
+      ),
+      showAllergenInfo: getLabelEnabled(formData.labelItems, "Allergen"),
+      showPrice: getLabelEnabled(formData.labelItems, "Price"),
+      customThankYouMessage: formData.customMessage,
+    };
+
+    return this.request.patch(
+      `/outlet/${outletId}/label-settings`,
+      payload,
+      COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
+    );
+  }
+  async updateReceiptSettings(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    formData: any,
+    outletId: string | number,
+    imageUrl: string
+  ) {
+    const payload = {
+
+
+      
       customizedLogoUrl: imageUrl, // Set this if you have it
       paperSize: formData.paperSize === "tape" ? "80mm" : "A4",
       fontStyle: "Arial", // or whatever default/font picker value you're using

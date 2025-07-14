@@ -198,7 +198,7 @@ export type Outlet = {
   state: string | null;
   //Just Added
   city?:string
-  email?:string
+  email:string
   postalCode: string | null;
   phoneNumber: string | null;
   country: string | null;

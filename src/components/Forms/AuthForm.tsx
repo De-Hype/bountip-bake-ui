@@ -314,7 +314,6 @@ const AuthForm = ({ mode }: Props) => {
         isPin: response.data.user.isPin,
       };
 
-
       if (userData.isPin) {
         setCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER, userData);
         setCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS, {
@@ -341,7 +340,6 @@ const AuthForm = ({ mode }: Props) => {
   };
 
   const handlePinLogin = async (pinValue: string) => {
-
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response: any = await authService.signInViaPin({ pin: pinValue });
@@ -380,13 +378,11 @@ const AuthForm = ({ mode }: Props) => {
     }
   };
 
-
   // Separate handler for PIN login button click
   const handlePinLoginClick = async (
     e: React.MouseEvent<HTMLButtonElement>
   ) => {
     e.preventDefault(); // Prevent form submission
-
 
     // Check if PIN login is locked
     if (isAccountLocked("pin_login")) {
@@ -425,7 +421,7 @@ const AuthForm = ({ mode }: Props) => {
 
   const onSubmit = async (data: FormValues) => {
     if (mode === "signin" && pinLogin) {
-      return; 
+      return;
     }
 
     setIsLoading(true);
@@ -654,43 +650,50 @@ const AuthForm = ({ mode }: Props) => {
           </button>
         ) : (
           // Regular submit button for other modes
-          <button
-            className={`text-white font-bold text-xl py-3.5 rounded-[10px] transition-colors ${
-              isSubmitDisabled()
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-[#15BA5C] hover:bg-[#13a551]"
-            }`}
-            type="submit"
-            disabled={isSubmitDisabled()}
-          >
-            {getSubmitButtonText()}
-          </button>
+
+          <>
+            {mode === "signup" && (
+              <div className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  required
+                  className="mt-1 h-4 w-4 accent-[#15BA5C]"
+                />
+                <label className="text-sm text-gray-600">
+                  By checking this box, you agree to our{" "}
+                  <Link
+                    href="/privacy-policy"
+                    className="text-[#15BA5C] underline"
+                  >
+                    Privacy Policy
+                  </Link>{" "}
+                  and{" "}
+                  <Link
+                    href="/terms-and-conditions"
+                    className="text-[#15BA5C] underline"
+                  >
+                    Terms & Conditions
+                  </Link>
+                  .
+                </label>
+              </div>
+            )}
+
+            <button
+              className={`text-white font-bold text-xl py-3.5 rounded-[10px] transition-colors ${
+                isSubmitDisabled()
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-[#15BA5C] hover:bg-[#13a551]"
+              }`}
+              type="submit"
+              disabled={isSubmitDisabled()}
+            >
+              {getSubmitButtonText()}
+            </button>
+          </>
         )}
 
         {/* Agreement - Only for signup */}
-        {mode === "signup" && (
-          <div className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              required
-              className="mt-1 h-4 w-4 accent-[#15BA5C]"
-            />
-            <label className="text-sm text-gray-600">
-              By checking this box, you agree to our{" "}
-              <Link href="/privacy-policy" className="text-[#15BA5C] underline">
-                Privacy Policy
-              </Link>{" "}
-              and{" "}
-              <Link
-                href="/terms-and-conditions"
-                className="text-[#15BA5C] underline"
-              >
-                Terms & Conditions
-              </Link>
-              .
-            </label>
-          </div>
-        )}
 
         {/* Remember Me and Forgot Password - Only for regular signin */}
         {mode === "signin" && !pinLogin && (

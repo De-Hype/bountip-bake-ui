@@ -10,6 +10,7 @@ import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import { useBusinessStore } from "@/stores/useBusinessStore";
 import { ApiResponseType } from "@/types/httpTypes";
 import { toast } from "sonner";
+import Image from "next/image";
 
 const fontOptions = [
   { value: "productSans", label: "Product Sans" },
@@ -45,6 +46,8 @@ export const ReceiptCustomizationModal: React.FC<
     "customer"
   );
   const [formData, setFormData] = useState({
+    //New Change
+    showRecieptBranding:false,
     showRestaurantName: false,
     fontStyle: "",
     paperSize: "",
@@ -90,6 +93,7 @@ export const ReceiptCustomizationModal: React.FC<
       }
 
       setFormData({
+        showRecieptBranding:false,
         showRestaurantName: settings.showBakeryName,
         showPaymentSucessText: settings.showPaymentSuccessText,
         fontStyle: settings.fontStyle,
@@ -132,7 +136,7 @@ export const ReceiptCustomizationModal: React.FC<
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const result = (await settingsService.updateLabelSettings(
+      const result = (await settingsService.updateReceiptSettings(
         formData,
         selectedOutletId as number,
         imageUrl
@@ -195,9 +199,29 @@ export const ReceiptCustomizationModal: React.FC<
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <h4 className="font-medium mb-4">Receipt Branding</h4>
-              <FileUploadComponent setImageUrl={setImageUrl} />
-
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium mb-4">Receipt Branding</h4>
+                <Switch
+                  checked={formData.showRecieptBranding}
+                  onChange={(checked) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      showRecieptBranding: checked,
+                    }))
+                  }
+                />
+              </div>
+              {imageUrl ? (
+                <Image
+                  height={140}
+                  width={140}
+                  alt="Logo"
+                  src={imageUrl}
+                  className="h-[140px] w-[140px] "
+                />
+              ) : (
+                <FileUploadComponent setImageUrl={setImageUrl} />
+              )}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium text-[#737373]">

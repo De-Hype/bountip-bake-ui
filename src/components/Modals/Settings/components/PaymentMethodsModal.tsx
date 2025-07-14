@@ -50,7 +50,6 @@ export const PaymentMethodsModal: React.FC<PaymentMethodsModalProps> = ({
       enabled: true,
     };
 
-    // Add the new method and deactivate others
     setMethods((prev) =>
       prev.map((m) => ({ ...m, enabled: false })).concat(newMethod)
     );
@@ -61,20 +60,22 @@ export const PaymentMethodsModal: React.FC<PaymentMethodsModalProps> = ({
 
   const handleDelete = (id: string) => {
     setMethods((prev) => prev.filter((m) => m.id !== id));
+    setCustomName("");
   };
 
   const handleSave = () => {
-    // You can persist selected methods here
     onClose();
   };
 
   const selectedMethod = methods.find((m) => m.enabled);
   const isSaveDisabled = !selectedMethod;
 
-  // ✅ FIXED: show form only when base "Others" is selected
   const isOthersSelected = methods.some(
     (m) => m.type === "others" && m.name === "Others" && m.enabled
   );
+
+  const getCustomOthersMethod = () =>
+    methods.find((m) => m.type === "others" && m.name !== "Others");
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -89,7 +90,7 @@ export const PaymentMethodsModal: React.FC<PaymentMethodsModalProps> = ({
 
   return (
     <Modal
-      size="lg"
+      size="sm"
       image={SettingFiles.PaymentMethods}
       isOpen={isOpen}
       onClose={onClose}
@@ -129,17 +130,28 @@ export const PaymentMethodsModal: React.FC<PaymentMethodsModalProps> = ({
         </div>
 
         {isOthersSelected && (
-          <div className="mt-4 flex flex-col gap-3">
+          <div className="mt-4 flex flex-col gap-3 border border-[#D1D1D1] p-4 rounded-lg">
             <label className="text-[#1C1B20] text-[16px]">
               Name of Payment Method
             </label>
-            <input
-              type="text"
-              placeholder="Enter payment method name"
-              value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
-              className="w-full border border-[#D1D1D1] outline-none rounded-[10px] px-4 py-3"
-            />
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                placeholder="Enter payment method name"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                className="flex-1 border border-[#D1D1D1] outline-none rounded-[10px] px-4 py-3"
+              />
+              {getCustomOthersMethod() && (
+                <button
+                  onClick={() => handleDelete(getCustomOthersMethod()!.id)}
+                  className="text-red-500 hover:text-red-700"
+                  title="Delete"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
+            </div>
             <button
               onClick={handleOthersSubmit}
               className="w-full hover:bg-[#15BA5C] hover:text-white border border-[#15BA5C] py-[9.8px] text-[#15BA5C] rounded-[9.8px] text-[15px]"

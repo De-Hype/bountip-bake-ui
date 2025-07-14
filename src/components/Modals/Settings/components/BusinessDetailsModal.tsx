@@ -26,7 +26,6 @@ import { useBusiness } from "@/hooks/useBusiness";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import { useBusinessStore } from "@/stores/useBusinessStore";
 import { Business } from "@/types/business";
-import { useUserStore } from "@/stores/useUserStore";
 
 interface BusinessDetailsModalProps {
   isOpen: boolean;
@@ -44,7 +43,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
 }) => {
   const outlet = useSelectedOutlet();
   const business = useBusiness() as Business;
-  const { user } = useUserStore();
   const [details, setDetails] = useState<BusinessDetailsType>({
     name: "",
     email: "",
@@ -153,7 +151,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
       businessType: business?.businessType || "",
       city: outlet?.outlet.city || "",
       email: outlet?.outlet.email || "",
-      //email: business?.email || "",
       country: outlet?.outlet.country || "",
       phone: outlet?.outlet.phoneNumber || "",
       postalCode: outlet?.outlet.postalCode || "",
@@ -437,13 +434,16 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
             />
           </div>
 
+         
           <Input
             label="Email"
             type="email"
-            disabled
-            value={user?.email || "Email address"}
-            placeholder={user?.email as string}
-            className={`w-full px-4 py-3 text-left bg-gray-100 text-gray-500 rounded-lg shadow-sm cursor-not-allowed`}
+            value={details.email}
+            onChange={(e) => handleChange("email", e.target.value)}
+            placeholder="Enter Email Address"
+            className={`w-full px-4 py-3 text-left bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors ${getDisabledStyles(
+              details.email as string
+            )}`}
           />
 
           <Input
