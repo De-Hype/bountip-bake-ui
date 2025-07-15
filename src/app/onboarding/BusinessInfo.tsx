@@ -440,7 +440,7 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
           {/* Submit */}
           <button
             onClick={handleBusinessOnboardingSubmission}
-            type="submit"
+            type="button"
             disabled={!businessType || !selectedCountry || !selectedCurrency}
             className="w-full mt-8 px-6 py-3 bg-[#15BA5C] text-white font-medium rounded-lg hover:bg-[#13A652] focus:outline-none focus:ring-2 focus:ring-[#15BA5C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
