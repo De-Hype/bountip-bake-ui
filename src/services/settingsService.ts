@@ -70,6 +70,24 @@ class SettingsService {
     );
   }
 
+  async deleteBusinessLocation({
+    businessId,
+    name,
+    address,
+    phoneNumber,
+  }: {
+    businessId: number;
+    name: string;
+    address: string;
+    phoneNumber: string;
+  }) {
+    return this.request.post(
+      `/outlet`,
+      { businessId, name, address, phoneNumber },
+      COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
+    );
+  }
+
   async updatePasswordSettings(data: {
     oldPassword: string;
     newPassword: string;
@@ -109,6 +127,32 @@ class SettingsService {
     );
   }
 
+  async updatePriceTier({
+    outletId,
+    tierId,
+    name,
+    description,
+    pricingRules,
+    isActive,
+  }: {
+    tierId: number;
+    outletId: number;
+    name: string;
+    description?: string;
+    pricingRules?: {
+      markupPercentage?: number;
+      discountPercentage?: number;
+      fixedMarkup?: number;
+      fixedDiscount?: number;
+    };
+    isActive?: boolean;
+  }) {
+    return this.request.patch(
+      `/outlet/${outletId}/price-tier/${tierId}`,
+      { name, description, pricingRules, isActive },
+      COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
+    );
+  }
   async deletePriceTier({
     outletId,
     priceTierId,
@@ -259,9 +303,6 @@ class SettingsService {
     imageUrl: string
   ) {
     const payload = {
-
-
-      
       customizedLogoUrl: imageUrl, // Set this if you have it
       paperSize: formData.paperSize === "tape" ? "80mm" : "A4",
       fontStyle: "Arial", // or whatever default/font picker value you're using

@@ -70,6 +70,9 @@ class AuthService {
   async getUser (){
     return this.request.get("/auth", COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS)
   }
+  async resendOtp(email:string){
+    return this.request.post("/auth/resend-otp", {email})
+  }
  
 }
 

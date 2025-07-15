@@ -18,19 +18,18 @@ const VerifyPage = () => {
   const router = useRouter();
 
   //const user = getCookie<{ email: string; name: string }>("regUserEmail");
-  const user = getCookie<{ email: string; name: string }>(COOKIE_NAMES.REG_USER_EMAIL);
-
+  const user = getCookie<{ email: string; name: string }>(
+    COOKIE_NAMES.REG_USER_EMAIL
+  );
 
   const firstName = user?.name?.split(" ")[0];
-
-  
 
   useEffect(() => {
     if (!user || !firstName) {
       router.push(`/auth?signup`);
     }
     inputsRef.current[0]?.focus();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!user || !firstName) {
@@ -72,20 +71,12 @@ const VerifyPage = () => {
   const handleVerifyEmail = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!isOtpComplete) {
-      toast.error("Please enter the complete OTP", {
-        duration: 4000,
-        position: "bottom-right",
-      });
-      return;
-    }
-
     const otpCode = otp.join("");
     const data = {
       email: user.email,
       otp: otpCode,
     };
-    
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response: any = await authService.verifyEmail(data);
     if (response.error) {
@@ -115,6 +106,13 @@ const VerifyPage = () => {
   };
 
   const isOtpComplete = otp.every((digit) => digit !== "");
+  const   handleResendOtp =async()=>{
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response:any = await authService.resendOtp(user.email);
+    if(response.status){
+      toast.success("OTP verification succesful")
+    }
+  }
 
   return (
     <main>
@@ -166,6 +164,7 @@ const VerifyPage = () => {
               </div>
             </div>
           </div>
+
           <button
             disabled={!isOtpComplete}
             className={`flex items-center justify-center gap-4 bg-[#15BA5C] text-white font-bold text-xl py-3.5 rounded-[10px] hover:bg-[#13a551] w-full ${
@@ -175,6 +174,14 @@ const VerifyPage = () => {
           >
             <Mail />
             <span>Verify Email</span>
+          </button>
+          <button
+          onClick={handleResendOtp}
+            className={`flex mt-4 items-center justify-center gap-4 bg-[#15BA5C] text-white font-bold text-xl py-3.5 rounded-[10px] hover:bg-[#13a551] w-full 
+              `}
+            type="button"
+          >
+            <span>Resend Email</span>
           </button>
         </form>
       </section>
