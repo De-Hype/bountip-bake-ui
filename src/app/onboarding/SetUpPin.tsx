@@ -16,13 +16,6 @@ const SetUpPin = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response:any = await authService.pinLogin({ pin });
 
-    if (response.error) {
-      toast.error(response.message || "PIN setup failed", {
-        duration: 4000,
-        position: "bottom-right",
-      });
-      return;
-    }
 
     if (response.status) {
       toast.success("PIN setup successful, please sign in", {
@@ -31,6 +24,12 @@ const SetUpPin = () => {
       });
       router.push("/auth?signin")
       removeCookie(COOKIE_NAMES.BOUNTIP_REGISTERED_USERS);
+    } else{
+      toast.error(response.message || "PIN setup failed", {
+        duration: 4000,
+        position: "bottom-right",
+      });
+      return;
     }
   };
 

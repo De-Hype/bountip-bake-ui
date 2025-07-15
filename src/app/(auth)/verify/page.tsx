@@ -79,13 +79,7 @@ const VerifyPage = () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response: any = await authService.verifyEmail(data);
-    if (response.error) {
-      toast.error(response.message || "Invalid OTP", {
-        duration: 4000,
-        position: "bottom-right",
-      });
-      return;
-    }
+    
 
     if (response.status) {
       toast.success("Email verified successfully", {
@@ -102,6 +96,12 @@ const VerifyPage = () => {
         },
         { expiresInMinutes: 10080 } // 7 days
       );
+    } else{
+      toast.error(response.message || "Invalid OTP", {
+        duration: 4000,
+        position: "bottom-right",
+      });
+      return;
     }
   };
 
