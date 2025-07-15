@@ -250,8 +250,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   // Dummy form submission function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (phoneError) return;
-    console.log(phoneError, "This is the error");
+    console.log(phoneError)
 
     const { country } = details;
 
