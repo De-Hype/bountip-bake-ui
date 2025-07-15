@@ -13,6 +13,7 @@ import { ApiResponseType } from "@/types/httpTypes";
 import { toast } from "sonner";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import Image from "next/image";
+import LabelPreview from "./LabelPreview";
 
 interface LabellingSettingsModalProps {
   isOpen: boolean;
@@ -161,8 +162,8 @@ export const LabellingSettingsModal: React.FC<LabellingSettingsModalProps> = ({
               <h4 className="font-medium mb-4">Label Branding</h4>
               {imageUrl ? (
                 <Image
-                height={140}
-                width={140}
+                  height={140}
+                  width={140}
                   alt="Logo"
                   src={imageUrl}
                   className="h-[140px] w-[140px] "
@@ -328,8 +329,10 @@ export const LabellingSettingsModal: React.FC<LabellingSettingsModalProps> = ({
             </Button>
           </form>
         </div>
-        <div className="flex-1"></div>
+          <LabelPreview type="label" formData={formData} imageUrl={imageUrl} />{" "}
       </section>
     </Modal>
   );
 };
+
+

@@ -10,6 +10,7 @@ import { Dropdown } from "../ui/Dropdown";
 import Image from "next/image";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import { useBusinessStore } from "@/stores/useBusinessStore";
+import LabelPreview from "./LabelPreview";
 
 interface InvoiceCustomizationModalProps {
   isOpen: boolean;
@@ -592,8 +593,13 @@ export const InvoiceCustomizationModal: React.FC<
             </Button>
           </form>
         </div>
-        <div className="flex-1/2"></div>
+        <div className="flex-1/2">
+        <LabelPreview formData={formData} imageUrl={imageUrl} type="invoice" />
+        </div>
       </section>
     </Modal>
   );
 };
+
+
+

@@ -130,7 +130,7 @@ class SettingsService {
   }: {
     tierId: number;
     outletId: number;
-    name: string;
+    name?: string;
     description?: string;
     pricingRules?: {
       markupPercentage?: number;

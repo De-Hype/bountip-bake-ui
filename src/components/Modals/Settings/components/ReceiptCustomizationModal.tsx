@@ -11,6 +11,9 @@ import { useBusinessStore } from "@/stores/useBusinessStore";
 import { ApiResponseType } from "@/types/httpTypes";
 import { toast } from "sonner";
 import Image from "next/image";
+import LabelPreview from "./LabelPreview";
+
+
 
 const fontOptions = [
   { value: "productSans", label: "Product Sans" },
@@ -576,7 +579,8 @@ export const ReceiptCustomizationModal: React.FC<
           </form>
         </div>
 
-        <div className="flex-1/2"></div>
+        {/* <div className="flex-1/2"></div> */}
+        <LabelPreview formData={formData} imageUrl={imageUrl} type="receipt" />
       </section>
     </Modal>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import DashboardSidebarLayout from "@/components/Sidebar/Sidebar";
 import Header from "@/components/Headers/Header";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
@@ -13,7 +13,6 @@ export default function ClientGuard({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const selectedOutlet = useSelectedOutlet();
 
   useEffect(() => {
@@ -21,15 +20,17 @@ export default function ClientGuard({
 
     if (!selectedOutlet) return;
 
-    // Example validation: check if `name` and `location` exist
     const requiredFieldsPresent = selectedOutlet.outlet.currency;
-    console.log(selectedOutlet.outlet, "This is the client comp")
 
-    if (!requiredFieldsPresent && pathname !== "/onboarding") {
-      setCookie(COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD, {selectedOutlet}, {expiresInMinutes:1000})
-      router.replace("/onboarding");
+    if (!requiredFieldsPresent) {
+      setCookie(
+        COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD,
+        { selectedOutlet },
+        { expiresInMinutes: 1000 }
+      );
+      router.push("/onboarding");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedOutlet]);
 
   return (
