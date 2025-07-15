@@ -5,7 +5,7 @@ import { COOKIE_NAMES } from "@/utils/cookiesUtils";
 class BusinessService {
   private request = new HttpService();
 
-  async onboardBusiness(data: OnboardBusinessData) {
+  async onboardBusiness(data: OnboardBusinessData, cookieName:COOKIE_NAMES) {
     return this.request.post(
       "/business/onboard",
       {
@@ -18,7 +18,7 @@ class BusinessService {
         currency: data.currency,
         revenueRange: data.revenueRange,
       },
-      COOKIE_NAMES.BOUNTIP_REGISTERED_USERS
+      cookieName
       //"bountipRegisteredUsers"
     );
   }

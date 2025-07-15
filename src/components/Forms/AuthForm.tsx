@@ -143,7 +143,6 @@ const AuthForm = ({ mode }: Props) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { pinLogin, setPinLogin, pin } = useAuthStore();
   const router = useRouter();
-  const [isChecked, setIsChecked] = useState(false);
   const [currentEmail, setCurrentEmail] = useState<string>("");
   const [lockoutTimer, setLockoutTimer] = useState<number>(0);
 
@@ -203,11 +202,6 @@ const AuthForm = ({ mode }: Props) => {
       setLockoutTimer(remainingTime);
     }
   }, [currentEmail]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newChecked = e.target.checked;
-    setIsChecked(newChecked);
-  };
 
   const handleLoginFailure = (email: string) => {
     const currentAttempts = getFailedAttempts(email);
@@ -615,7 +609,7 @@ const AuthForm = ({ mode }: Props) => {
         {mode === "signup" && password && (
           <PasswordStrengthMeter password={password} />
         )}
-        {!pinLogin && password && (
+        { mode === "signup" && !pinLogin && password && (
           <p className="text-sm text-gray-600 mt-1">{label}</p>
         )}
 
@@ -697,48 +691,7 @@ const AuthForm = ({ mode }: Props) => {
 
         {/* Remember Me and Forgot Password - Only for regular signin */}
         {mode === "signin" && !pinLogin && (
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  id="remember-me"
-                  checked={isChecked}
-                  onChange={handleChange}
-                  className="sr-only"
-                />
-                <label
-                  htmlFor="remember-me"
-                  className="flex items-center cursor-pointer"
-                >
-                  <div
-                    className={`w-4 h-4 border-2 rounded-sm flex items-center justify-center transition-all duration-200 ${
-                      isChecked
-                        ? "bg-green-500 border-green-500"
-                        : "bg-white border-gray-300 hover:border-gray-400"
-                    }`}
-                  >
-                    {isChecked && (
-                      <svg
-                        className="w-3 h-3 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="ml-2 text-sm text-gray-700 select-none">
-                    Remember Me
-                  </span>
-                </label>
-              </div>
-            </div>
-
+          <div className="flex justify-end items-center">
             <Link
               href="/reset-password"
               className="text-sm text-[#15BA5C] hover:underline"

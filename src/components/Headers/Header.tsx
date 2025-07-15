@@ -20,13 +20,14 @@ import React, { useEffect } from "react";
 import { Outlet } from "@/types/outlet";
 
 const Header = () => {
-  const { setShowFullDashboardSidebar, showFullDashboardSidebar } = useModalStore();
+  const { setShowFullDashboardSidebar, showFullDashboardSidebar } =
+    useModalStore();
   const {
     fetchBusinessData,
     outlets,
     selectedOutletId,
     setSelectedOutletId,
-    loading
+    loading,
   } = useBusinessStore();
 
   const router = useRouter();
@@ -37,6 +38,7 @@ const Header = () => {
 
   const handleLogOut = () => {
     removeCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS);
+    removeCookie(COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD)
     router.push("/auth?signin");
   };
 
@@ -124,8 +126,6 @@ interface UserDropdownProps {
   onLogoutClick?: () => void;
 }
 
-;
-
 interface UserDropdownProps {
   user?: User;
   outlets: Outlet[];
@@ -135,7 +135,6 @@ interface UserDropdownProps {
   onSettingsClick?: () => void;
   onLogoutClick?: () => void;
 }
-
 
 const UserDropdown: React.FC<UserDropdownProps> = ({
   user,
@@ -160,7 +159,10 @@ const UserDropdown: React.FC<UserDropdownProps> = ({
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -169,7 +171,8 @@ const UserDropdown: React.FC<UserDropdownProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const imageUrl = activeOutlet?.logoUrl || user?.avatar || "/default-avatar.png";
+  const imageUrl =
+    activeOutlet?.logoUrl || user?.avatar || "/default-avatar.png";
   console.log(imageUrl, "This imageUrl is being used in UserDropdown");
 
   return (
@@ -196,9 +199,8 @@ const UserDropdown: React.FC<UserDropdownProps> = ({
             )}
           </div>
           <h3 className="font-medium text-gray-900 truncate whitespace-nowrap overflow-hidden max-w-[180px]">
-  {loading ? "Loading..." : activeOutlet?.name || "Select Outlet"}
-</h3>
-
+            {loading ? "Loading..." : activeOutlet?.name || "Select Outlet"}
+          </h3>
         </div>
         <ChevronDown
           className={`h-4 w-4 text-gray-600 transition-transform duration-300 ${
@@ -263,7 +265,9 @@ const UserDropdown: React.FC<UserDropdownProps> = ({
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-left group transition-colors duration-150"
           >
             <LogOut className="h-4 w-4 text-red-500 group-hover:text-red-600" />
-            <span className="text-red-500 font-medium group-hover:text-red-600">Log Out</span>
+            <span className="text-red-500 font-medium group-hover:text-red-600">
+              Log Out
+            </span>
             <ChevronDown className="h-3 w-3 text-red-400 ml-auto rotate-[-90deg] group-hover:text-red-500" />
           </button>
         </div>
@@ -271,4 +275,3 @@ const UserDropdown: React.FC<UserDropdownProps> = ({
     </div>
   );
 };
-

@@ -5,14 +5,19 @@ import SplitedProgressBar from "@/components/Loaders/SplitedProgressBar";
 import Image, { StaticImageData } from "next/image";
 import SetUpPin from "./SetUpPin";
 import BusinessInfo from "./BusinessInfo";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 import { COOKIE_NAMES, getCookie } from "@/utils/cookiesUtils";
+import { OutletAccess } from "@/types/outlet";
+// import { COOKIE_NAMES, getCookie } from "@/utils/cookiesUtils";
 
 const OnboardingClient = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const currentStep = searchParams.get("step") || "business";
+  const outletData = getCookie<OutletAccess>(
+    COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD
+  );
 
   const handleNextStep = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -23,20 +28,20 @@ const OnboardingClient = () => {
   const isPinStep = currentStep === "pin";
   const isBusinessStep = currentStep === "business";
 
-  const userTokens = getCookie<{ accessToken: string; refreshToken: string }>(
-    // "bountipRegisteredUsers"
-    COOKIE_NAMES.BOUNTIP_REGISTERED_USERS
-  );
-  useEffect(() => {
-    const checkIfUserRegistered = () => {
-      if (!userTokens) {
-         router.push("/auth?signup");
-        return null;
-      }
-    };
-    checkIfUserRegistered();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userTokens]);
+  // const userTokens = getCookie<{ accessToken: string; refreshToken: string }>(
+  //   // "bountipRegisteredUsers"
+  //   COOKIE_NAMES.BOUNTIP_REGISTERED_USERS
+  // );
+  // useEffect(() => {
+  //   const checkIfUserRegistered = () => {
+  //     if (!userTokens) {
+  //        router.push("/auth?signup");
+  //       return null;
+  //     }
+  //   };
+  //   checkIfUserRegistered();
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [userTokens]);
   return (
     <main className="flex min-h-screen">
       <section className="bg-[#FAFAFC] flex-1/3">
@@ -45,7 +50,7 @@ const OnboardingClient = () => {
       <section className="flex-2/3 my-7 flex justify-center">
         <div className="w-[80%]">
           <SplitedProgressBar
-            length={2}
+            length={outletData ?1: 2}
             filled={isPinStep ? 2 : 1}
             color="#15BA5C"
           />

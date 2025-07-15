@@ -70,20 +70,13 @@ class SettingsService {
     );
   }
 
-  async deleteBusinessLocation({
-    businessId,
-    name,
-    address,
-    phoneNumber,
-  }: {
-    businessId: number;
-    name: string;
-    address: string;
-    phoneNumber: string;
-  }) {
-    return this.request.post(
-      `/outlet`,
-      { businessId, name, address, phoneNumber },
+  async deleteBusinessLocation(
+    outletId:number|string
+    
+  ) {
+    return this.request.delete(
+      `/outlet/${outletId}`,
+
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }

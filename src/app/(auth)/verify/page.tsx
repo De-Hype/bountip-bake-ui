@@ -181,7 +181,7 @@ const VerifyPage = () => {
               `}
             type="button"
           >
-            <span>Resend Email</span>
+            <span>Resend OTP</span>
           </button>
         </form>
       </section>

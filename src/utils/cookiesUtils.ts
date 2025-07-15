@@ -7,6 +7,7 @@ export enum COOKIE_NAMES {
   REG_USER_EMAIL = "regUserEmail",
   BOUNTIP_LOGIN_USER = "bountipLoginUser",
   BOUNTIP_LOGIN_USER_TOKENS = "bountipLoginUserTokens",
+  BOUNTIP_LOCATION_ONBOARD = "bountipOnboardLocation"
 }
 
 type ExtendedCookieOptions = Cookies.CookieAttributes & {

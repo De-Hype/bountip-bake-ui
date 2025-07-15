@@ -14,31 +14,29 @@ import { getRole } from "@/utils/getRolesType";
 import { COOKIE_NAMES, removeCookie } from "@/utils/cookiesUtils";
 import { useRouter } from "next/navigation";
 
-
 const DashboardSidebarLayout = () => {
   const { showFullDashboardSidebar } = useModalStore();
   const pathname = usePathname();
   const activeId = pathname.split("/")[1] || "dashboard";
   const [settingsOpen, setSettingsOpen] = useState(false);
-   const router = useRouter();
+  const router = useRouter();
   // const user = getCookie<UserType>("bountipLoginUser");
   // const user = getCookie<UserType>(COOKIE_NAMES.BOUNTIP_LOGIN_USER);
-  const outlets = useSelectedOutlet()
-   if(!outlets) return;
+  const outlets = useSelectedOutlet();
+  if (!outlets) return;
 
   const sidebarWidth = showFullDashboardSidebar ? "w-[300px]" : "w-20";
   const handleLogOut = () => {
-      removeCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS);
-      router.push("/auth?signin");
-    };
+    removeCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS);
+    removeCookie(COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD);
+    router.push("/auth?signin");
+  };
 
   return (
     <section
       className={`bg-white h-full ${sidebarWidth} transition-all duration-300`}
     >
       <section>
-
-
         <nav className="flex flex-col gap-2 px-2 pb-4">
           {DashboardSidebarNavigationData.map((item) => {
             const isActive = item.id === activeId;
@@ -120,7 +118,7 @@ const DashboardSidebarLayout = () => {
             title={outlets?.outlet.name || "User"}
           >
             <Image
-              src={ outlets?.outlet.logoUrl|| AssetsFiles.UserPerson}
+              src={outlets?.outlet.logoUrl || AssetsFiles.UserPerson}
               className="h-[48px] w-[48px] rounded-full"
               alt="User"
               width={48}
@@ -129,13 +127,18 @@ const DashboardSidebarLayout = () => {
             {showFullDashboardSidebar && (
               <div>
                 <p className="font-medium">{outlets?.outlet.name}</p>
-                <p className="text-xs text-gray-500">{getRole(outlets?.accessType)}</p>
+                <p className="text-xs text-gray-500">
+                  {getRole(outlets?.accessType)}
+                </p>
               </div>
             )}
           </div>
 
           {showFullDashboardSidebar ? (
-            <button onClick={handleLogOut} className="flex items-center gap-2 text-red-500 text-sm py-3.5 cursor-pointer hover:bg-red-50 hover:rounded-[10px] px-1.5">
+            <button
+              onClick={handleLogOut}
+              className="flex items-center gap-2 text-red-500 text-sm py-3.5 cursor-pointer hover:bg-red-50 hover:rounded-[10px] px-1.5"
+            >
               <LogOut className="w-5 h-5" />
               <span>Log Out</span>
             </button>

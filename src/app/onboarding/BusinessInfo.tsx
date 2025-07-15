@@ -1,3 +1,4 @@
+"use client"
 import { useEffect, useState } from "react";
 import { ChevronDown, Plus, X, Check } from "lucide-react";
 import BusinessRevenueComponent from "./BusinessRevenueComponent";
@@ -7,6 +8,9 @@ import { BusinessAndOutlet, BusinessResponse } from "@/types/businessTypes";
 import { Country, ICountry } from "country-state-city";
 import C from "currency-codes";
 import Image from "next/image";
+import { OutletAccess } from "@/types/outlet";
+import { COOKIE_NAMES, getCookie } from "@/utils/cookiesUtils";
+import { useRouter } from "next/navigation";
 
 // Retrieve countries and currencies
 const countries = Country.getAllCountries();
@@ -19,7 +23,12 @@ const defaultBusinessTypes = ["Bakery", "Restaurant", "Bar"];
 interface BusinessInfoProps {
   onNext: () => void;
 }
-const BusinessInfo = ({onNext}:BusinessInfoProps) => {
+const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
+  const cookieData = getCookie<{ selectedOutlet: OutletAccess }>(
+    COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD
+  );
+  const selectedOutlet = cookieData?.selectedOutlet;
+  const router = useRouter()
   const [businessType, setBusinessType] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<ICountry | null>(null);
   const [businessAddress, setBusinessAddress] = useState("");
@@ -49,7 +58,7 @@ const BusinessInfo = ({onNext}:BusinessInfoProps) => {
 
   const filteredCurrencies = currencies.filter(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (currency:any) =>
+    (currency: any) =>
       currency.currency
         .toLowerCase()
         .includes(currencySearchTerm.toLowerCase()) ||
@@ -105,31 +114,36 @@ const BusinessInfo = ({onNext}:BusinessInfoProps) => {
   const handleImageUpload = (url: string) => setUploadedImageUrl(url);
 
   const handleBusinessOnboardingSubmission = async (e: React.FormEvent) => {
+    if (!selectedOutlet) return null;
+    console.log(selectedOutlet);
     e.preventDefault();
     if (!businessType || !selectedCountry || !selectedCurrency) {
       return alert("Please select business type, location, and currency");
     }
 
     try {
-      
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response: any = await businessService.onboardBusiness({
-        businessId: businessId as number,
-        outletId: outletId as number,
+        businessId: selectedOutlet.outlet.businessId,
+        outletId: selectedOutlet.outlet.id,
         country: selectedCountry.name,
         logoUrl: uploadedImageUrl,
         address: businessAddress || selectedCountry.name,
         businessType,
         currency: selectedCurrency.code,
         revenueRange: revenue.toString(),
-      });
+      },  selectedOutlet?  COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS: COOKIE_NAMES.BOUNTIP_REGISTERED_USERS);
 
       if (response.status) {
         toast.success("Business information submitted successfully!", {
           duration: 4000,
           position: "bottom-right",
         });
-        onNext();
+        if (!selectedOutlet) {
+          onNext();
+        } else {
+          router.push("/dashboard ");
+        }
       }
     } catch (error) {
       console.error(error);
@@ -385,7 +399,7 @@ const BusinessInfo = ({onNext}:BusinessInfoProps) => {
                     {filteredCurrencies.length > 0 ? (
                       filteredCurrencies.map(
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (currency:any) => (
+                        (currency: any) => (
                           <button
                             key={currency.code}
                             type="button"

@@ -9,6 +9,7 @@ import settingsService from "@/services/settingsService";
 import { toast } from "sonner";
 import { useBusiness } from "@/hooks/useBusiness";
 import { usePureOutlets } from "@/hooks/useSelectedOutlet";
+import { ApiResponseType } from "@/types/httpTypes";
 
 interface LocationSettingsModalProps {
   isOpen: boolean;
@@ -54,7 +55,6 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
       hasInitialized.current = false;
     }
   }, [isOpen, outletsList]);
-  
 
   // Early return after hooks
   if (!businessId) {
@@ -109,12 +109,22 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
     });
   };
 
-  const removeNewLocation = (index: number) => {
+  const removeNewLocation = async (index: number) => {
+    // const response = await settingsService.deleteBusinessLocation(index) as ApiResponseType;
+    // if(response.status){
+
+    // }
     setNewLocations((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const removeExistingLocation = (id: string) => {
-    setLocations((prev) => prev.filter((loc) => loc.id !== id));
+  const removeExistingLocation = async (id: string) => {
+    const response = (await settingsService.deleteBusinessLocation(
+      id
+    )) as ApiResponseType;
+    console.log(response, "This is the deleted location")
+    if (response.status) {
+      setLocations((prev) => prev.filter((loc) => loc.id !== id));
+    }
   };
 
   const updateExistingLocation = (
