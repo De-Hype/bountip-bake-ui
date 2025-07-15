@@ -114,7 +114,6 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
   const handleImageUpload = (url: string) => setUploadedImageUrl(url);
 
   const handleBusinessOnboardingSubmission = async (e: React.FormEvent) => {
-    if (!selectedOutlet) return null;
     console.log(selectedOutlet);
     e.preventDefault();
     if (!businessType || !selectedCountry || !selectedCurrency) {
@@ -124,8 +123,8 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response: any = await businessService.onboardBusiness({
-        businessId: selectedOutlet.outlet.businessId,
-        outletId: selectedOutlet.outlet.id,
+        businessId: selectedOutlet?  selectedOutlet.outlet.businessId : businessId,
+        outletId: selectedOutlet? selectedOutlet.outlet.id: outletId,
         country: selectedCountry.name,
         logoUrl: uploadedImageUrl,
         address: businessAddress || selectedCountry.name,

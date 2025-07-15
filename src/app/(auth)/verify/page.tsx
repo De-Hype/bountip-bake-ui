@@ -162,6 +162,16 @@ const VerifyPage = () => {
                   />
                 ))}
               </div>
+              <p className="text-sm text-gray-600">
+                Didn’t receive the email?
+                <button
+                  type="button"
+                  className="text-black font-medium underline hover:text-green-600 ml-1"
+                  onClick={handleResendOtp}
+                >
+                  Click to resend OTP
+                </button>
+              </p>
             </div>
           </div>
 
@@ -175,14 +185,14 @@ const VerifyPage = () => {
             <Mail />
             <span>Verify Email</span>
           </button>
-          <button
-          onClick={handleResendOtp}
+          {/* <button
+            onClick={handleResendOtp}
             className={`flex mt-4 items-center justify-center gap-4 bg-[#15BA5C] text-white font-bold text-xl py-3.5 rounded-[10px] hover:bg-[#13a551] w-full 
               `}
             type="button"
           >
             <span>Resend OTP</span>
-          </button>
+          </button> */}
         </form>
       </section>
       {showsignUpSuccessModal && <SuccessModal />}
