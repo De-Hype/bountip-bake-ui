@@ -15,7 +15,7 @@ export class HttpService {
   private baseUrl: string;
   private isRefreshing: Record<string, boolean> = {};
 
-  constructor(env: BaseUrlProdType = "local") {
+  constructor(env: BaseUrlProdType = "live") {
     this.baseUrl = getBaseUrl(env);
   }
 
