@@ -15,6 +15,7 @@ import LabelPreview from "./LabelPreview";
 interface InvoiceCustomizationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess: (heading: string, description: string) => void;
 }
 
 const fontOptions = [
@@ -41,7 +42,8 @@ const columnOptions = [
 
 export const InvoiceCustomizationModal: React.FC<
   InvoiceCustomizationModalProps
-> = ({ isOpen, onClose }) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+> = ({ isOpen, onClose, onSuccess }) => {
   const [imageUrl, setImageUrl] = useState("");
   const [formData, setFormData] = useState({
     showBakeryName: false,

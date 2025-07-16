@@ -40,11 +40,13 @@ const columnOptions = [
 interface ReceiptCustomizationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess: (heading: string, description: string) => void;
 }
 
 export const ReceiptCustomizationModal: React.FC<
   ReceiptCustomizationModalProps
-> = ({ isOpen, onClose }) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+> = ({ isOpen, onClose, onSuccess }) => {
   const [activeTab, setActiveTab] = useState<"customer" | "payment">(
     "customer"
   );

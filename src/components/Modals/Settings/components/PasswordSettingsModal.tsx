@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Modal } from "../ui/Modal";
-import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Eye, EyeOff } from "lucide-react";
 import SettingFiles from "@/assets/icons/settings";
@@ -12,6 +11,7 @@ import { useRouter } from "next/navigation";
 interface PasswordSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess: (heading: string, description: string) => void;
 }
 type PasswordSettingsRespone = {
   status: boolean;
@@ -19,10 +19,10 @@ type PasswordSettingsRespone = {
   data?: null;
 };
 
-
 export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
   isOpen,
   onClose,
+  onSuccess
 }) => {
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -65,31 +65,29 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
         newPassword: newPassword,
       })) as PasswordSettingsRespone;
       if (result.status) {
-        toast.success(result.message, {
-          duration: 3000,
-          position: "top-right",
-        });
+        onSuccess(
+          "Save Successful!",
+          "Your Password has been saved successfully"
+        );
+        
         removeCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER);
-              removeCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS);
-              router.push("/auth?signin");
+        removeCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS);
+        router.push("/auth?signin");
         return;
       }
       toast.error("Incorrect credentials - failed to update password", {
         duration: 3000,
         position: "top-right",
-        style:{ backgroundColor: "#f87171", color: "#fff" },
+        style: { backgroundColor: "#f87171", color: "#fff" },
       });
-      
-
     } catch (error: unknown) {
-      
       toast.error("Failed to update password", {
         duration: 3000,
         position: "top-right",
       });
       console.error("Error updating password:", error);
       return;
-    } finally{
+    } finally {
       onClose();
       setFormData({
         currentPassword: "",
@@ -119,7 +117,7 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="relative">
           <Input
-            className="w-full px-4 py-3 text-left bg-white border border-gray-300 rounded-lg shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors"
+            className="w-full px-4 text-[#1C1B20] py-3 text-left bg-white border border-gray-300 rounded-lg shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors"
             label="Current Password"
             type={showPasswords.current ? "text" : "password"}
             value={formData.currentPassword}
@@ -130,7 +128,7 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
           />
           <button
             type="button"
-            className="absolute right-3 top-8 text-gray-400"
+            className="absolute right-3 top-10 text-gray-400"
             onClick={() => togglePasswordVisibility("current")}
           >
             {showPasswords.current ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -139,7 +137,7 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
 
         <div className="relative">
           <Input
-            className="w-full px-4 py-3 text-left bg-white border border-gray-300 rounded-lg shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors"
+            className="w-full text-[#1C1B20] px-4 py-3 text-left bg-white border border-gray-300 rounded-lg shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors"
             label="New Password"
             type={showPasswords.new ? "text" : "password"}
             value={formData.newPassword}
@@ -150,7 +148,7 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
           />
           <button
             type="button"
-            className="absolute right-3 top-8 text-gray-400"
+            className="absolute right-3 top-10 text-gray-400"
             onClick={() => togglePasswordVisibility("new")}
           >
             {showPasswords.new ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -168,12 +166,8 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
                   requirements.minLength ? "bg-green-500" : "bg-gray-300"
                 }`}
               />
-              <span
-                className={`text-sm ${
-                  requirements.minLength ? "text-green-600" : "text-gray-500"
-                }`}
-              >
-                Password Must have 8 or Characters Long
+              <span className={`text-sm  text-[#1C1B20]`}>
+                Password Must have 8-16 Characters long
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -182,12 +176,8 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
                   requirements.hasNumber ? "bg-green-500" : "bg-gray-300"
                 }`}
               />
-              <span
-                className={`text-sm ${
-                  requirements.hasNumber ? "text-green-600" : "text-gray-500"
-                }`}
-              >
-                Password Must have at least one special character eg: @,#,!,?
+              <span className={`text-sm text-[#1C1B20]`}>
+                Password Must have at least one number{" "}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -196,11 +186,7 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
                   requirements.hasSpecial ? "bg-green-500" : "bg-gray-300"
                 }`}
               />
-              <span
-                className={`text-sm ${
-                  requirements.hasSpecial ? "text-green-600" : "text-gray-500"
-                }`}
-              >
+              <span className={`text-sm text-[#1C1B20]`}>
                 Password Must have at least one special character eg: @,#,!,?
               </span>
             </div>
@@ -209,7 +195,7 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
 
         <div className="relative">
           <Input
-            className="w-full px-4 py-3 text-left bg-white border border-gray-300 rounded-lg shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors"
+            className="w-full text-[#1C1B20] px-4 py-3 text-left bg-white border border-gray-300 rounded-lg shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors"
             label="Confirm Password"
             type={showPasswords.confirm ? "text" : "password"}
             value={formData.confirmPassword}
@@ -220,16 +206,15 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
           />
           <button
             type="button"
-            className="absolute right-3 top-8 text-gray-400"
+            className="absolute right-3 top-10 text-gray-400"
             onClick={() => togglePasswordVisibility("confirm")}
           >
             {showPasswords.confirm ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
-
-        <Button onClick={handleSubmit} type="submit" className="w-full">
+        <button className="w-full bg-[#15BA5C] text-white py-[9.8px] rounded-[9.8px] cursor-pointer  hover:bg-green-950 " type="button">
           Update Password
-        </Button>
+        </button>
       </form>
     </Modal>
   );

@@ -19,7 +19,7 @@ export default function Home() {
     const isNotOnboarded = getCookie(COOKIE_NAMES.BOUNTIP_REGISTERED_USERS)
 
     if (token?.accessToken) {
-      router.push("/dashboard");
+      router.push("/settings");
     } else if(isNotOnboarded){
       router.push("/onboarding")
     }

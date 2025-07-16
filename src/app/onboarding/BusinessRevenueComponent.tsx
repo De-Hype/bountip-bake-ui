@@ -2,19 +2,31 @@ import { Upload, CheckCircle, Loader2, X } from "lucide-react";
 import { useRef, useState } from "react";
 import uploadService from "@/services/uploadService"; // Adjust path as needed
 import { COOKIE_NAMES } from "@/utils/cookiesUtils";
+import Range from "rc-slider"; // Import the Range component
+import "rc-slider/assets/index.css"; // Import default styles (we'll override with Tailwind)
 
 interface BusinessRevenueComponentProps {
-  onRevenueChange?: (value: number) => void;
+  onRevenueRangeChange?: (range: string) => void;
   onFileUpload?: (file: File) => void;
-  onImageUpload?: (url: string) => void; // New prop for image URL
+  onImageUpload?: (url: string) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  selectedCurrency?: any;
 }
 
+const MIN_REVENUE = 0;
+const MAX_REVENUE = 1000000;
+const STEP_REVENUE = 1000;
+
 const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
-  onRevenueChange,
+  onRevenueRangeChange,
   onFileUpload,
   onImageUpload,
+  selectedCurrency,
 }) => {
-  const [revenueValue, setRevenueValue] = useState<number>(50000);
+  const [revenueRange, setRevenueRange] = useState<[number, number]>([
+    MIN_REVENUE,
+    MAX_REVENUE,
+  ]);
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -22,45 +34,68 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
   const [uploadError, setUploadError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(event.target.value);
-    setRevenueValue(value);
-    onRevenueChange?.(value);
+  // Function to get currency symbol
+  const getCurrencySymbol = (currencyCode: string): string => {
+    try {
+      return (
+        new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: currencyCode,
+        })
+          .formatToParts(0)
+          .find((part) => part.type === "currency")?.value || currencyCode
+      );
+    } catch {
+      return currencyCode;
+    }
   };
 
   const formatCurrency = (value: number): string => {
+    const currencyCode = selectedCurrency?.code || "USD";
+    const symbol = getCurrencySymbol(currencyCode);
+
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: currencyCode,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value);
+    })
+      .format(value)
+      .replace(/[A-Z]{3}/, symbol);
+  };
+
+  const handleRevenueRangeChange = (values: number | number[]) => {
+    // rc-slider returns number[] for Range, number for Slider.
+    // We expect number[] here for the Range component.
+    if (Array.isArray(values)) {
+      setRevenueRange([values[0], values[1]]);
+      const rangeString = `${values[0]}-${values[1]}`;
+      onRevenueRangeChange?.(rangeString);
+    }
   };
 
   const uploadImage = async (file: File) => {
     setIsUploading(true);
-    setUploadError(""); // Clear any previous errors
+    setUploadError("");
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response: any = await uploadService.uploadImage(
         file,
-        COOKIE_NAMES.BOUNTIP_REGISTERED_USERS,
-        // "bountipRegisteredUsers"
+        COOKIE_NAMES.BOUNTIP_REGISTERED_USERS
       );
-      console.log(response)
+      console.log(response);
 
       if (response.status) {
         setUploadedImageUrl(response.data.url);
-        onImageUpload?.(response.data.url); // Pass URL to parent
-        console.log("Image uploaded successfully:", response.url);
+        onImageUpload?.(response.data.url);
+        console.log("Image uploaded successfully:", response.data.url);
       } else {
         throw new Error("No URL returned from upload service");
       }
     } catch (error) {
       console.error("Upload failed:", error);
       setUploadError("Failed to upload image. Please try again.");
-      // Reset upload states on error
       setUploadedImageUrl("");
       setUploadedFile(null);
     } finally {
@@ -69,7 +104,6 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
   };
 
   const handleFileSelect = async (file: File) => {
-    // Clear previous error and upload states when attempting new upload
     setUploadError("");
     setUploadedImageUrl("");
     setUploadedFile(null);
@@ -78,15 +112,13 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
       "image/jpeg",
       "image/png",
       "image/svg+xml",
-      "application/pdf",
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      setUploadError("Please select a valid file type (JPG, PNG, SVG, PDF)");
+      setUploadError("Please select a valid file type (JPG, PNG, SVG)");
       return;
     }
 
-    // Check file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
       setUploadError("File size must be less than 5MB");
       return;
@@ -95,7 +127,6 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
     setUploadedFile(file);
     onFileUpload?.(file);
 
-    // Automatically upload the image
     await uploadImage(file);
   };
 
@@ -126,7 +157,6 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
     if (files && files.length > 0) {
       handleFileSelect(files[0]);
     }
-    // Reset the file input value to allow selecting the same file again if needed
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -134,7 +164,6 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
 
   const handleUploadClick = () => {
     if (!isUploading) {
-      // Clear error when user clicks to upload
       setUploadError("");
       fileInputRef.current?.click();
     }
@@ -144,8 +173,6 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
     setUploadError("");
   };
 
-  // Reset upload state when starting a new upload attempt
-
   return (
     <div className="w-full bg-white">
       {/* Revenue Range Section */}
@@ -154,40 +181,50 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
           Business Revenue Range
         </h3>
 
-        <div className="relative h-10">
-          <h3
-            className="absolute bottom-3 transform -translate-x-1/2 text-sm font-semibold text-emerald-600"
-            style={{
-              left: `calc(${(revenueValue / 1000000) * 100}% )`,
-            }}
-          >
-            {formatCurrency(revenueValue)}
-          </h3>
+        <div className="flex justify-between items-center mb-4 text-emerald-600 font-semibold text-lg">
+          <span>{formatCurrency(revenueRange[0])}</span>
+          <span>{formatCurrency(revenueRange[1])}</span>
         </div>
 
-        <div className="relative">
-          <input
-            type="range"
-            min="0"
-            max="1000000"
-            step="1000"
-            value={revenueValue}
-            onChange={handleSliderChange}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-            style={{
-              background: `linear-gradient(to right, #10b981 0%, #10b981 ${
-                (revenueValue / 1000000) * 100
-              }%, #e5e7eb ${(revenueValue / 1000000) * 100}%, #e5e7eb 100%)`,
-            }}
+        <div className="relative h-10 flex items-center px-2">
+          <Range
+            range={true} // Explicitly enable range mode for two handles
+            min={MIN_REVENUE}
+            max={MAX_REVENUE}
+            step={STEP_REVENUE}
+            value={revenueRange}
+            onChange={handleRevenueRangeChange}
+            trackStyle={[{ backgroundColor: "#10b981", height: "8px" }]} // Style the track (between handles)
+            handleStyle={[
+              {
+                backgroundColor: "#10b981",
+                borderColor: "#ffffff",
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                width: "20px",
+                height: "20px",
+                marginTop: "-6px",
+              },
+              {
+                backgroundColor: "#10b981",
+                borderColor: "#ffffff",
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                width: "20px",
+                height: "20px",
+                marginTop: "-6px",
+              },
+            ]} // Style both handles
+            railStyle={{ backgroundColor: "#e5e7eb", height: "8px" }} // Style the rail (total track)
+            className="w-full" // Apply basic width. rc-slider handles actual sizing.
           />
-          <div className="flex justify-between text-sm text-gray-500 mt-1">
-            <span>$0</span>
-            <span>$1M+</span>
-          </div>
+        </div>
+
+        <div className="flex justify-between text-sm text-gray-500 mt-1">
+          <span>{formatCurrency(MIN_REVENUE)}</span>
+          <span>{formatCurrency(MAX_REVENUE)}+</span>
         </div>
       </div>
 
-      {/* File Upload  Section */}
+      {/* File Upload Section - Remains unchanged */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">
           Upload your Business Logo
@@ -209,12 +246,11 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".jpg,.jpeg,.png,.svg,.pdf"
+            accept=".jpg,.jpeg,.png,.svg"
             onChange={handleFileInputChange}
             className="hidden"
             disabled={isUploading}
           />
-
           <div className="flex flex-col items-center">
             {isUploading ? (
               <>
@@ -255,7 +291,7 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
                     Click to upload or Drag your file here
                   </p>
                   <p className="text-sm text-gray-500">
-                    Max file: 5mb, Png, jpg, svg, pdf
+                    Max file: 5mb, Png, jpg, svg
                   </p>
                 </div>
               </>
@@ -279,29 +315,6 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: #10b981;
-          cursor: pointer;
-          border: 2px solid #ffffff;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .slider::-moz-range-thumb {
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: #10b981;
-          cursor: pointer;
-          border: 2px solid #ffffff;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-      `}</style>
     </div>
   );
 };

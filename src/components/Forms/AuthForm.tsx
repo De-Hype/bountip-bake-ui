@@ -318,7 +318,7 @@ const AuthForm = ({ mode }: Props) => {
           duration: 4000,
           position: "bottom-right",
         });
-        router.push("/dashboard");
+        router.push("/settings");
       } else {
         setCookie(
           COOKIE_NAMES.BOUNTIP_REGISTERED_USERS,
@@ -362,7 +362,7 @@ const AuthForm = ({ mode }: Props) => {
         }
 
         // Navigate to appropriate page
-        router.push("/dashboard");
+        router.push("/settings");
       }
 
       return response;

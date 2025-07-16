@@ -38,11 +38,14 @@ interface PriceTierFormProps {
 interface PriceSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess: (heading: string, description: string) => void;
 }
 
 export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
   isOpen,
   onClose,
+  onSuccess
+
 }) => {
   const { selectedOutletId, outlets, fetchBusinessData } = useBusinessStore();
   const [tiers, setTiers] = useState<PriceTier[]>([]);
@@ -100,7 +103,10 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
 
       if (result.status) {
         setTiers((prev) => prev.filter((t) => t.id !== id));
-        toast.success("Price tier deleted successfully");
+        onSuccess(
+          "Delete Successful!",
+          "Your Price Tier has been Deleted Successfully"
+        );
         await fetchBusinessData();
       } else {
         toast.error("Failed to delete price tier");
@@ -227,7 +233,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
       }
 
       if (succeeded.length > 0) {
-        toast.success(`${succeeded.length} price tier(s) saved successfully.`);
+        onSuccess("Save Successful!", "Save Successful!");
         setTiers((prev) => prev.map((t) => ({ ...t, isNew: false })));
         formRef?.resetForm();
         await fetchBusinessData();

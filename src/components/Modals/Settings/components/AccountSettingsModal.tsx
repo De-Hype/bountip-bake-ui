@@ -15,10 +15,11 @@ import { toast } from "sonner";
 export const AccountSettingsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-}> = ({ isOpen, onClose }) => {
+  onSuccess: (heading: string, description: string) => void;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+}> = ({ isOpen, onClose, onSuccess }) => {
   const [activeTab, setActiveTab] = useState<"taxes" | "service">("taxes");
-  const { fetchCategory, categories } =
-    useProductManagementStore();
+  const { fetchCategory, categories } = useProductManagementStore();
   const [taxes, setTaxes] = useState<TaxItem[]>([]);
   const [categoriesList, setCategoriesList] = useState<DropdownOption[]>([]);
   const outletId = useSelectedOutlet()?.outlet.id;
@@ -54,7 +55,7 @@ export const AccountSettingsModal: React.FC<{
     }));
   };
 
-  console.log(categories, "This is the categories")
+  console.log(categories, "This is the categories");
 
   // Load existing tax data when modal opens
   useEffect(() => {

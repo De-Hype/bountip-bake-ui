@@ -10,7 +10,6 @@ import {
 } from "country-state-city";
 import countryCurrencyMap from "country-currency-map";
 import { Check, ChevronDown, Plus, X, Upload, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import Image from "next/image";
 import { CiEdit } from "react-icons/ci";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
@@ -30,6 +29,7 @@ import { Business } from "@/types/business";
 interface BusinessDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess: (heading: string, description: string) => void;
   outletId: string | number | null;
 }
 
@@ -40,6 +40,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   isOpen,
   onClose,
   outletId,
+  onSuccess,
 }) => {
   const outlet = useSelectedOutlet();
   const business = useBusiness() as Business;
@@ -62,6 +63,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isBusinessTypeOpen, setIsBusinessTypeOpen] = useState(false);
   const [phoneError, setPhoneError] = useState<string>("");
+  const [loading, setLoading] = useState(false);
   // Country dropdown states
   const [selectedCountry, setSelectedCountry] = useState<ICountry | null>(null);
   const [isCountryOpen, setIsCountryOpen] = useState(false);
@@ -195,7 +197,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     if (business?.businessType) {
       setBusinessType(business.businessType);
     }
-     
   }, [business, outlet]);
 
   useEffect(() => {
@@ -249,8 +250,10 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
 
   // Dummy form submission function
   const handleSubmit = async (e: React.FormEvent) => {
+    setLoading(true);
+
     e.preventDefault();
-    console.log(phoneError)
+    console.log(phoneError);
 
     const { country } = details;
 
@@ -268,7 +271,12 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
       outletId as number
     );
     if (response.status) {
-      toast.success("Business details updated successfully!");
+
+        onSuccess(
+          "Update Successful!",
+          "Your Details have been updated successfully"
+        );
+      setLoading(false);
       setDetails({
         name: "",
         email: "",
@@ -433,7 +441,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
             />
           </div>
 
-         
           <Input
             label="Email"
             type="email"
@@ -948,10 +955,17 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
 
         <div className="flex flex-col mt-6">
           <button
-            className="w-full bg-[#15BA5C] py-2.5 text-[#FFFFFF] font-medium rounded-[10px] hover:bg-[#13A652] transition-colors"
+            disabled={loading}
+            className={`w-full py-2.5 font-medium rounded-[10px] transition-colors flex items-center justify-center gap-2
+        ${
+          loading
+            ? "bg-[#A1A1A1] cursor-not-allowed"
+            : "bg-[#15BA5C] hover:bg-[#13A652] text-white"
+        }`}
             type="submit"
           >
-            Save Details
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {loading ? "Loading..." : "Save Details"}
           </button>
         </div>
       </form>

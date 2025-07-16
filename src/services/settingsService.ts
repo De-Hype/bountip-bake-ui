@@ -70,10 +70,7 @@ class SettingsService {
     );
   }
 
-  async deleteBusinessLocation(
-    outletId:number|string
-    
-  ) {
+  async deleteBusinessLocation(outletId: number | string) {
     return this.request.delete(
       `/outlet/${outletId}`,
 
@@ -174,6 +171,14 @@ class SettingsService {
         address,
         hubType,
       },
+      COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
+    );
+  }
+
+  async getInventoryHub(businessId:number) {
+    return this.request.get(
+      `/inventory-hubs/business/${businessId}`,
+
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }

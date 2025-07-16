@@ -18,6 +18,7 @@ import LabelPreview from "./LabelPreview";
 interface LabellingSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess: (heading: string, description: string) => void;
 }
 
 const fontOptions = [
@@ -37,6 +38,7 @@ const paperSizeOptions = [
 export const LabellingSettingsModal: React.FC<LabellingSettingsModalProps> = ({
   isOpen,
   onClose,
+  onSuccess
 }) => {
   const { selectedOutletId, loading } = useBusinessStore();
   const selectedOutlet = useSelectedOutlet();
@@ -126,6 +128,11 @@ export const LabellingSettingsModal: React.FC<LabellingSettingsModalProps> = ({
       )) as ApiResponseType;
 
       if (result.status) {
+
+        onSuccess(
+          "Save Successful!",
+          "Your Label has been saved successfully"
+        );
         toast.success("Successfully created the labelling");
         onClose();
       } else {

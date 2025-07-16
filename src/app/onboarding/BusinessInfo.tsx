@@ -1,6 +1,8 @@
-"use client"
+
+
+"use client";
 import { useEffect, useState } from "react";
-import { ChevronDown, Plus, X, Check } from "lucide-react";
+import { ChevronDown, Plus, X, Check, Loader2 } from "lucide-react";
 import BusinessRevenueComponent from "./BusinessRevenueComponent";
 import { businessService } from "@/services/businessService";
 import { toast } from "sonner";
@@ -23,12 +25,13 @@ const defaultBusinessTypes = ["Bakery", "Restaurant", "Bar"];
 interface BusinessInfoProps {
   onNext: () => void;
 }
+
 const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
   const cookieData = getCookie<{ selectedOutlet: OutletAccess }>(
     COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD
   );
   const selectedOutlet = cookieData?.selectedOutlet;
-  const router = useRouter()
+  const router = useRouter();
   const [businessType, setBusinessType] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<ICountry | null>(null);
   const [businessAddress, setBusinessAddress] = useState("");
@@ -40,7 +43,8 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [newBusinessType, setNewBusinessType] = useState("");
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [revenue, setRevenue] = useState(50000);
+  const [revenueRange, setRevenueRange] = useState("50000-100000");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_, setLogoFile] = useState<File | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -113,25 +117,39 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
 
   const handleImageUpload = (url: string) => setUploadedImageUrl(url);
 
+  const handleRevenueRangeChange = (range: string) => {
+    setRevenueRange(range);
+  };
+
   const handleBusinessOnboardingSubmission = async (e: React.FormEvent) => {
     console.log(selectedOutlet);
     e.preventDefault();
+
     if (!businessType || !selectedCountry || !selectedCurrency) {
       return alert("Please select business type, location, and currency");
     }
 
+    setIsSubmitting(true);
+
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response: any = await businessService.onboardBusiness({
-        businessId: selectedOutlet?  selectedOutlet.outlet.businessId : businessId,
-        outletId: selectedOutlet? selectedOutlet.outlet.id: outletId,
-        country: selectedCountry.name,
-        logoUrl: uploadedImageUrl,
-        address: businessAddress || selectedCountry.name,
-        businessType,
-        currency: selectedCurrency.code,
-        revenueRange: revenue.toString(),
-      },  selectedOutlet?  COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS: COOKIE_NAMES.BOUNTIP_REGISTERED_USERS);
+      const response: any = await businessService.onboardBusiness(
+        {
+          businessId: selectedOutlet
+            ? selectedOutlet.outlet.businessId
+            : businessId,
+          outletId: selectedOutlet ? selectedOutlet.outlet.id : outletId,
+          country: selectedCountry.name,
+          logoUrl: uploadedImageUrl,
+          address: businessAddress || selectedCountry.name,
+          businessType,
+          currency: selectedCurrency.code,
+          revenueRange: revenueRange,
+        },
+        selectedOutlet
+          ? COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
+          : COOKIE_NAMES.BOUNTIP_REGISTERED_USERS
+      );
 
       if (response.status) {
         toast.success("Business information submitted successfully!", {
@@ -141,12 +159,14 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
         if (!selectedOutlet) {
           onNext();
         } else {
-          router.push("/dashboard ");
+          router.push("/settings");
         }
       }
     } catch (error) {
       console.error(error);
       alert("An error occurred while submitting your business information.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -430,9 +450,10 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
           {/* Revenue + Logo Upload */}
           <div className="w-full">
             <BusinessRevenueComponent
-              onRevenueChange={setRevenue}
+              onRevenueRangeChange={handleRevenueRangeChange}
               onFileUpload={setLogoFile}
               onImageUpload={handleImageUpload}
+              selectedCurrency={selectedCurrency}
             />
           </div>
 
@@ -440,10 +461,22 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
           <button
             onClick={handleBusinessOnboardingSubmission}
             type="button"
-            disabled={!businessType || !selectedCountry || !selectedCurrency}
-            className="w-full mt-8 px-6 py-3 bg-[#15BA5C] text-white font-medium rounded-lg hover:bg-[#13A652] focus:outline-none focus:ring-2 focus:ring-[#15BA5C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={
+              !businessType ||
+              !selectedCountry ||
+              !selectedCurrency ||
+              isSubmitting
+            }
+            className="w-full mt-8 px-6 py-3 bg-[#15BA5C] text-white font-medium rounded-lg hover:bg-[#13A652] focus:outline-none focus:ring-2 focus:ring-[#15BA5C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
           >
-            Continue
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Continue"
+            )}
           </button>
         </div>
       </form>

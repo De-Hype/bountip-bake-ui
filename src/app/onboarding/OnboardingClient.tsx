@@ -6,8 +6,9 @@ import Image, { StaticImageData } from "next/image";
 import SetUpPin from "./SetUpPin";
 import BusinessInfo from "./BusinessInfo";
 import React, { useCallback } from "react";
-import { COOKIE_NAMES, getCookie } from "@/utils/cookiesUtils";
+import { COOKIE_NAMES, getCookie, removeCookie } from "@/utils/cookiesUtils";
 import { OutletAccess } from "@/types/outlet";
+import { ArrowLeft } from "lucide-react";
 // import { COOKIE_NAMES, getCookie } from "@/utils/cookiesUtils";
 
 const OnboardingClient = () => {
@@ -18,6 +19,13 @@ const OnboardingClient = () => {
   const outletData = getCookie<OutletAccess>(
     COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD
   );
+  const handleReturnBack = () => {
+    removeCookie(COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD);
+
+    // Force a hard navigation
+    window.location.href = "/settings"; // or your intended destination
+  };
+
 
   const handleNextStep = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -50,10 +58,19 @@ const OnboardingClient = () => {
       <section className="flex-2/3 my-7 flex justify-center">
         <div className="w-[80%]">
           <SplitedProgressBar
-            length={outletData ?1: 2}
+            length={outletData ? 1 : 2}
             filled={isPinStep ? 2 : 1}
             color="#15BA5C"
           />
+          {outletData && (
+            <button
+              onClick={ handleReturnBack}
+              className="inline-flex my-2 items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-md transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Go Back
+            </button>
+          )}
           {isPinStep && <SetUpPin />}
           {isBusinessStep && <BusinessInfo onNext={handleNextStep} />}
         </div>

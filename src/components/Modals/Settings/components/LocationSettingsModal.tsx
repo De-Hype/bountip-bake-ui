@@ -4,27 +4,41 @@ import { Input } from "../ui/Input";
 import { BusinessLocation } from "@/types/settingTypes";
 import SettingFiles from "@/assets/icons/settings";
 import Image from "next/image";
-import { Check, Trash2 } from "lucide-react";
+import { Check, Trash2, Loader2 } from "lucide-react";
 import settingsService from "@/services/settingsService";
 import { toast } from "sonner";
 import { useBusiness } from "@/hooks/useBusiness";
 import { usePureOutlets } from "@/hooks/useSelectedOutlet";
 import { ApiResponseType } from "@/types/httpTypes";
+import { useBusinessStore } from "@/stores/useBusinessStore";
 
 interface LocationSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess: (heading: string, description: string) => void;
 }
 
 export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
   isOpen,
   onClose,
+  onSuccess
 }) => {
   const outletsList = usePureOutlets();
   const [locations, setLocations] = useState<BusinessLocation[]>([]);
   const [newLocations, setNewLocations] = useState<Partial<BusinessLocation>[]>(
     [{ name: "", address: "", phoneNumber: "" }]
   );
+  const { fetchBusinessData } = useBusinessStore();
+
+  // Loading states
+  const [isSaving, setIsSaving] = useState(false);
+  const [deletingLocationId, setDeletingLocationId] = useState<string | null>(
+    null
+  );
+  const [deletingNewLocationIndex, setDeletingNewLocationIndex] = useState<
+    number | null
+  >(null);
+
   const [editingDefaultLocation, setEditingDefaultLocation] = useState(false);
 
   const business = useBusiness();
@@ -53,6 +67,10 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
 
     if (!isOpen) {
       hasInitialized.current = false;
+      // Reset loading states when modal closes
+      setIsSaving(false);
+      setDeletingLocationId(null);
+      setDeletingNewLocationIndex(null);
     }
   }, [isOpen, outletsList]);
 
@@ -63,11 +81,6 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
 
   const defaultLocation = locations.find((loc) => loc.isDefault);
   const otherLocations = locations.filter((loc) => !loc.isDefault);
-
-  console.log("Current locations:", locations);
-  console.log("Default location:", defaultLocation);
-  console.log("Other locations:", otherLocations);
-  console.log("New locations:", newLocations);
 
   // Check if the last new location has all required fields filled
   const isLastNewLocationComplete = () => {
@@ -110,20 +123,45 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
   };
 
   const removeNewLocation = async (index: number) => {
-    // const response = await settingsService.deleteBusinessLocation(index) as ApiResponseType;
-    // if(response.status){
+    setDeletingNewLocationIndex(index);
 
-    // }
-    setNewLocations((prev) => prev.filter((_, i) => i !== index));
+    try {
+      // If this is just a new location that hasn't been saved yet, no API call needed
+      setNewLocations((prev) => prev.filter((_, i) => i !== index));
+      onSuccess(
+        "Save Successful!",
+        "Your Location has been removed successfully"
+      );
+    } catch (error) {
+      console.error("Error removing location:", error);
+      toast.error("Failed to remove location");
+    } finally {
+      setDeletingNewLocationIndex(null);
+    }
   };
 
   const removeExistingLocation = async (id: string) => {
-    const response = (await settingsService.deleteBusinessLocation(
-      id
-    )) as ApiResponseType;
-    console.log(response, "This is the deleted location")
-    if (response.status) {
-      setLocations((prev) => prev.filter((loc) => loc.id !== id));
+    setDeletingLocationId(id);
+
+    try {
+      const response = (await settingsService.deleteBusinessLocation(
+        id
+      )) as ApiResponseType;
+
+      console.log(response, "This is the deleted location");
+
+      if (response.status) {
+        setLocations((prev) => prev.filter((loc) => loc.id !== id));
+        await fetchBusinessData();
+
+onSuccess("Save Successful!", "Your Location has been removed successfully");      } else {
+        toast.error("Failed to delete location");
+      }
+    } catch (error) {
+      console.error("Error deleting location:", error);
+      toast.error("Failed to delete location");
+    } finally {
+      setDeletingLocationId(null);
     }
   };
 
@@ -148,6 +186,8 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
   const handleSave = async () => {
     if (!businessId) return;
 
+    setIsSaving(true);
+
     // Only include locations that have a name and address filled in
     const validNewLocations = newLocations
       .filter((loc) => loc.name && loc.address && loc.phoneNumber)
@@ -169,15 +209,24 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
           })
         )
       );
+
       setNewLocations([{ name: "", address: "", phoneNumber: "" }]);
       setEditingDefaultLocation(false);
-      toast.success("Locations added successfully");
+      onSuccess(
+        "Save Successful!",
+        "Your Location has been saved successfully"
+      );      await fetchBusinessData();
       onClose(); // Close the modal after saving
     } catch (error) {
       console.error("Error saving locations", error);
       toast.error("Failed to save locations");
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  // Helper component for loading spinner
+  const LoadingSpinner = () => <Loader2 className="h-4 w-4 animate-spin" />;
 
   return (
     <Modal
@@ -217,6 +266,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                         );
                       }}
                       placeholder="Enter Name e.g Main Branch"
+                      disabled={isSaving}
                     />
                   </div>
                   <div className="col-span-4">
@@ -237,6 +287,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                         );
                       }}
                       placeholder="Enter Address"
+                      disabled={isSaving}
                     />
                   </div>
                   <div className="col-span-4">
@@ -257,13 +308,15 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                         );
                       }}
                       placeholder="Enter Phone Number"
+                      disabled={isSaving}
                     />
                   </div>
                   <div className="col-span-1 flex items-end pb-2 justify-center">
                     <button
                       type="button"
                       onClick={toggleDefaultLocationEdit}
-                      className="p-2 text-green-500 hover:text-green-700 border border-green-200 rounded-lg hover:border-green-300"
+                      disabled={isSaving}
+                      className="p-2 text-green-500 hover:text-green-700 border border-green-200 rounded-lg hover:border-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Check className="h-4 w-4" />
                     </button>
@@ -286,7 +339,8 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                   <button
                     type="button"
                     onClick={toggleDefaultLocationEdit}
-                    className="bg-[#15BA5C] flex items-center rounded-[20px] px-2.5 py-1.5"
+                    disabled={isSaving}
+                    className="bg-[#15BA5C] flex items-center rounded-[20px] px-2.5 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Image
                       src={SettingFiles.EditIcon}
@@ -331,6 +385,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                       );
                     }}
                     placeholder="Enter Name e.g Abuja Branch"
+                    disabled={isSaving || deletingLocationId === location.id}
                   />
                 </div>
                 <div className="col-span-4">
@@ -351,6 +406,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                       );
                     }}
                     placeholder="Enter Address"
+                    disabled={isSaving || deletingLocationId === location.id}
                   />
                 </div>
                 <div className="col-span-4">
@@ -371,15 +427,21 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                       );
                     }}
                     placeholder="Enter Phone Number"
+                    disabled={isSaving || deletingLocationId === location.id}
                   />
                 </div>
                 <div className="col-span-1 flex items-end pb-2 justify-center">
                   <button
                     type="button"
                     onClick={() => removeExistingLocation(location.id)}
-                    className="p-2 text-red-500 hover:text-red-700 border border-red-200 rounded-lg hover:border-red-300"
+                    disabled={isSaving || deletingLocationId === location.id}
+                    className="p-2 text-red-500 hover:text-red-700 border border-red-200 rounded-lg hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {deletingLocationId === location.id ? (
+                      <LoadingSpinner />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -401,6 +463,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                       updateNewLocation(index, "name", e.target.value)
                     }
                     placeholder="Enter Name e.g Abuja Branch"
+                    disabled={isSaving || deletingNewLocationIndex === index}
                   />
                 </div>
                 <div className="col-span-4">
@@ -413,6 +476,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                       updateNewLocation(index, "address", e.target.value)
                     }
                     placeholder="Enter Address"
+                    disabled={isSaving || deletingNewLocationIndex === index}
                   />
                 </div>
                 <div className="col-span-4">
@@ -425,15 +489,21 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                       updateNewLocation(index, "phoneNumber", e.target.value)
                     }
                     placeholder="Enter Phone Number"
+                    disabled={isSaving || deletingNewLocationIndex === index}
                   />
                 </div>
                 <div className="col-span-1 flex items-end pb-2 justify-center">
                   <button
                     type="button"
                     onClick={() => removeNewLocation(index)}
-                    className="p-2 text-red-500 hover:text-red-700 border border-red-200 rounded-lg hover:border-red-300"
+                    disabled={isSaving || deletingNewLocationIndex === index}
+                    className="p-2 text-red-500 hover:text-red-700 border border-red-200 rounded-lg hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {deletingNewLocationIndex === index ? (
+                      <LoadingSpinner />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -444,7 +514,8 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
         {/* Add New Location Button */}
         <button
           onClick={addNewLocationField}
-          className="border border-[#15BA5C] w-full text-[#15BA5C] py-3 rounded-[10px] font-medium text-base mt-5"
+          disabled={isSaving}
+          className="border border-[#15BA5C] w-full text-[#15BA5C] py-3 rounded-[10px] font-medium text-base mt-5 disabled:opacity-50 disabled:cursor-not-allowed"
           type="button"
         >
           + Add a new Location
@@ -454,11 +525,12 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
         <div className="flex justify-end">
           <button
             onClick={handleSave}
-            className="flex items-center justify-center gap-2 bg-[#15BA5C] w-full text-[#ffffff] py-3 rounded-[10px] font-medium text-base mt-5"
+            disabled={isSaving}
+            className="flex items-center justify-center gap-2 bg-[#15BA5C] w-full text-[#ffffff] py-3 rounded-[10px] font-medium text-base mt-5 disabled:opacity-50 disabled:cursor-not-allowed"
             type="button"
           >
-            <Check className="h-4 w-4" />
-            <span>Save Location</span>
+            {isSaving ? <LoadingSpinner /> : <Check className="h-4 w-4" />}
+            <span>{isSaving ? "Saving..." : "Save Location"}</span>
           </button>
         </div>
       </div>
