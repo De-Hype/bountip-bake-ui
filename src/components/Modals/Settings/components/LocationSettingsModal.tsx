@@ -11,9 +11,6 @@ import { useBusiness } from "@/hooks/useBusiness";
 import { usePureOutlets } from "@/hooks/useSelectedOutlet";
 import { ApiResponseType } from "@/types/httpTypes";
 import { useBusinessStore } from "@/stores/useBusinessStore";
-// import { getPhoneCountries, PhoneCountry } from "@/utils/getPhoneCountries";
-// import { parsePhoneNumberFromString } from "libphonenumber-js";
-
 
 interface LocationSettingsModalProps {
   isOpen: boolean;
@@ -24,7 +21,7 @@ interface LocationSettingsModalProps {
 export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
 }) => {
   const outletsList = usePureOutlets();
   const [locations, setLocations] = useState<BusinessLocation[]>([]);
@@ -45,7 +42,8 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
   const [editingDefaultLocation, setEditingDefaultLocation] = useState(false);
 
   const business = useBusiness();
-  
+  console.log(outletsList, "This is all the outlets");
+  console.log(business, "This is the business");
 
   const businessId = business?.id;
 
@@ -156,7 +154,11 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
         setLocations((prev) => prev.filter((loc) => loc.id !== id));
         await fetchBusinessData();
 
-onSuccess("Save Successful!", "Your Location has been removed successfully");      } else {
+        onSuccess(
+          "Save Successful!",
+          "Your Location has been removed successfully"
+        );
+      } else {
         toast.error("Failed to delete location");
       }
     } catch (error) {
@@ -217,7 +219,8 @@ onSuccess("Save Successful!", "Your Location has been removed successfully");   
       onSuccess(
         "Save Successful!",
         "Your Location has been saved successfully"
-      );      await fetchBusinessData();
+      );
+      await fetchBusinessData();
       onClose(); // Close the modal after saving
     } catch (error) {
       console.error("Error saving locations", error);

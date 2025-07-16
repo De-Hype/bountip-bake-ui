@@ -1008,29 +1008,31 @@ const AllergenSelector: React.FC<AllergenSelectorProps> = ({
     onAllergensChange(updatedAllergens);
   };
 
+  console.log(allergens, "This is the allergens");
+
   return (
     <div className="my-4">
       <div className="flex flex-wrap gap-3 mb-4">
-        {allergens.map((allergen) => (
-          <div key={allergen.id} className="relative group">
+        {[allergens]?.map((allergen) => (
+          <div key={allergen?.id} className="relative group">
             <button
               type="button"
-              onClick={() => toggleAllergen(allergen.id)}
+              onClick={() => toggleAllergen(allergen.allergies.id)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 hover:shadow-sm ${
                 allergen.isSelected
                   ? "bg-green-100 text-[#15BA5C] border border-[#15BA5C] hover:bg-green-200"
                   : "bg-[#FAFAFC] text-[#1C1B20] border border-[#E6E6E6] hover:bg-gray-100"
               }`}
             >
-              {allergen.name}
+              {allergen.allergies?.name}
             </button>
-            {allergen.isSelected && (
+            {allergen.allergies?.isSelected && (
               <button
                 type="button"
-                aria-label={`Remove ${allergen.name}`}
+                aria-label={`Remove ${allergen.allergie.name}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  removeAllergen(allergen.id);
+                  removeAllergen(allergen.allergies.id);
                 }}
                 className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
               >

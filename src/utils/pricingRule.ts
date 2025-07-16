@@ -21,11 +21,6 @@ export const calculateTierPrice = (
 
   const { markupPercentage, discountPercentage } = rules;
 
-  if (markupPercentage != null && discountPercentage != null) {
-    throw new Error(
-      "Only one of markupPercentage or discountPercentage should be provided."
-    );
-  }
 
   let finalPrice = numericBasePrice;
 

@@ -666,6 +666,8 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
   price,
   onTiersChange,
 }) => {
+  console.log(tiers, "This is the tiers");
+
   const handleTierChange = (id: number) => {
     // Changed from string to number
     const updatedTiers = tiers.map(
@@ -771,6 +773,7 @@ const AllergenSelector: React.FC<AllergenSelectorProps> = ({
   const [newAllergen, setNewAllergen] = useState("");
 
   const toggleAllergen = (id: string) => {
+    console.log(allergens, "This is our allergens")
     const updatedAllergens = allergens.map((allergen) =>
       allergen.id === id
         ? { ...allergen, isSelected: !allergen.isSelected }
