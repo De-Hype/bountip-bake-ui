@@ -3,6 +3,7 @@
 import React from "react";
 import { Camera } from "lucide-react";
 import Image from "next/image";
+import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 
 interface LabelPreviewProps {
   formData: any;
@@ -33,6 +34,7 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
       (prop) => getNestedValue(formData, prop) !== undefined
     );
   };
+  const outlet=useSelectedOutlet()
 
   // Determine business name display
   const getBusinessNameDisplay = () => {
@@ -75,7 +77,13 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
           />
         ) : (
           <div className="h-16 w-16 mx-auto mb-4 bg-green-500 rounded flex items-center justify-center">
-            <Camera className="w-8 h-8 text-white" />
+            <Image
+              width={100}
+              height={100}
+              src={outlet?.outlet.logoUrl as string}
+              alt="Business Logo"
+              className="h-16 w-16 mx-auto mb-4 object-contain"
+            />
           </div>
         )}
 
@@ -315,7 +323,13 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
           />
         ) : (
           <div className="h-16 w-16 mx-auto mb-4 bg-green-500 rounded flex items-center justify-center">
-            <Camera className="w-8 h-8 text-white" />
+            <Image
+              width={100}
+              height={100}
+              src={outlet?.outlet.logoUrl as string}
+              alt="Business Logo"
+              className="h-16 w-16 mx-auto mb-4 object-contain"
+            />
           </div>
         )}
 
