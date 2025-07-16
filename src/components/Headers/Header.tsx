@@ -90,7 +90,7 @@ const Header = () => {
           <UserDropdown
             user={{
               fullName: user?.fullName as string,
-              avatar: AssetsFiles.UserPerson,
+              avatar: AssetsFiles.UserPersonTwo,
             }}
             outlets={outletList}
             activeOutlet={selectedOutletAccess?.outlet}

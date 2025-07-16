@@ -118,7 +118,7 @@ const DashboardSidebarLayout = () => {
             title={outlets?.outlet.name || "User"}
           >
             <Image
-              src={outlets?.outlet.logoUrl || AssetsFiles.UserPerson}
+              src={outlets?.outlet.logoUrl || AssetsFiles.UserPersonTwo}
               className="h-[48px] w-[48px] rounded-full"
               alt="User"
               width={48}

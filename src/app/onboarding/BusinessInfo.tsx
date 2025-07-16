@@ -30,6 +30,9 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
   const cookieData = getCookie<{ selectedOutlet: OutletAccess }>(
     COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD
   );
+  const registeredCookieData = getCookie(
+    COOKIE_NAMES.BOUNTIP_REGISTERED_USERS
+  );
   const selectedOutlet = cookieData?.selectedOutlet;
   const router = useRouter();
   const [businessType, setBusinessType] = useState("");
@@ -128,46 +131,53 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
     if (!businessType || !selectedCountry || !selectedCurrency) {
       return alert("Please select business type, location, and currency");
     }
-
+    let CookieName;
     setIsSubmitting(true);
-
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response: any = await businessService.onboardBusiness(
-        {
-          businessId: selectedOutlet
-            ? selectedOutlet.outlet.businessId
-            : businessId,
-          outletId: selectedOutlet ? selectedOutlet.outlet.id : outletId,
-          country: selectedCountry.name,
-          logoUrl: uploadedImageUrl,
-          address: businessAddress || selectedCountry.name,
-          businessType,
-          currency: selectedCurrency.code,
-          revenueRange: revenueRange,
-        },
-        selectedOutlet
-          ? COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
-          : COOKIE_NAMES.BOUNTIP_REGISTERED_USERS
-      );
-
-      if (response.status) {
-        toast.success("Business information submitted successfully!", {
-          duration: 4000,
-          position: "bottom-right",
-        });
-        if (!selectedOutlet) {
-          onNext();
-        } else {
-          router.push("/settings");
-        }
-      }
-    } catch (error) {
-      console.error(error);
-      alert("An error occurred while submitting your business information.");
-    } finally {
-      setIsSubmitting(false);
+    console.log(selectedOutlet);
+    if (registeredCookieData){
+      CookieName = COOKIE_NAMES.BOUNTIP_REGISTERED_USERS;
+    }else if(selectedOutlet){
+      CookieName = COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS;
+    } else{
+      CookieName = COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS;
     }
+    console.log(CookieName)
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const response: any = await businessService.onboardBusiness(
+          {
+            businessId: selectedOutlet
+              ? selectedOutlet.outlet.businessId
+              : businessId,
+            outletId: selectedOutlet ? selectedOutlet.outlet.id : outletId,
+            country: selectedCountry.name,
+            logoUrl: uploadedImageUrl,
+            address: businessAddress || selectedCountry.name,
+            businessType,
+            currency: selectedCurrency.code,
+            revenueRange: revenueRange,
+          },
+
+          CookieName
+        );
+
+        if (response.status) {
+          toast.success("Business information submitted successfully!", {
+            duration: 4000,
+            position: "bottom-right",
+          });
+          if (!selectedOutlet) {
+            onNext();
+          } else {
+            router.push("/settings");
+          }
+        }
+      } catch (error) {
+        console.error(error);
+        alert("An error occurred while submitting your business information.");
+      } finally {
+        setIsSubmitting(false);
+      }
   };
 
   return (

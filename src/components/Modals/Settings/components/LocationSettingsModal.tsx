@@ -45,8 +45,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
   const [editingDefaultLocation, setEditingDefaultLocation] = useState(false);
 
   const business = useBusiness();
-  console.log(outletsList, "This is all the outlets");
-  console.log(business, "This is the business");
+  
 
   const businessId = business?.id;
 

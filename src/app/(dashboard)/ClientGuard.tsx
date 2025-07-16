@@ -20,8 +20,8 @@ export default function ClientGuard({
 
     if (!selectedOutlet) return;
     console.log(selectedOutlet);
-
-    const requiredFieldsPresent = selectedOutlet.outlet.isOnboarded;
+    
+    const requiredFieldsPresent = selectedOutlet.outlet.isOnboarded && selectedOutlet.outlet.address && selectedOutlet.outlet.logoUrl;
 
     if (!requiredFieldsPresent) {
       setCookie(

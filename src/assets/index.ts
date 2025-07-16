@@ -1,5 +1,6 @@
 import AuthBgImage from "@/assets/images/AuthBgImage.jpg";
 import UserPerson from "@/assets/images/UserPerson.png";
+import UserPersonTwo from "@/assets/images/UserPersonTwo.jpg"
 
 //SVG
 import LogoOne from "@/assets/LogoOne.svg";
@@ -36,6 +37,7 @@ const AssetsFiles = {
   LogoTwo,
   PasswordIcon,
   GoogleIcon,
+  UserPersonTwo,
 
   //Dashboard Icons
   DashboardIcon,
