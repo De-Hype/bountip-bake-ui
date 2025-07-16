@@ -12,6 +12,7 @@ import {
   Fingerprint,
   Mail,
   MailOpen,
+  Loader2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -23,12 +24,30 @@ import {
   removeCookie,
   setCookie,
 } from "@/utils/cookiesUtils";
-import { toast } from "sonner";
 import authService from "@/services/authServices";
+import SuccessToast from "@/components/Modals/Success/SuccessModal";
+import ErrorToast from "@/components/Modals/Errors/ErrorModal";
+
+type ToastType = "success" | "error";
+
+interface ToastState {
+  isOpen: boolean;
+  type: ToastType;
+  heading: string;
+  description: string;
+}
 
 const ResetPasswordClient = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  // State for toast notifications
+  const [toast, setToast] = useState<ToastState>({
+    isOpen: false,
+    type: "success",
+    heading: "",
+    description: "",
+  });
 
   // Get step from URL query param, default to 'forgot'
   const step = searchParams.get("step") || "forgot";
@@ -39,6 +58,21 @@ const ResetPasswordClient = () => {
     url.searchParams.set("step", newStep);
     router.push(url.toString());
   };
+
+  // Helper to show toast notifications
+  const showToast = (type: ToastType, heading: string, description: string) => {
+    setToast({
+      isOpen: true,
+      type,
+      heading,
+      description,
+    });
+  };
+
+  const closeToast = () => {
+    setToast((prev) => ({ ...prev, isOpen: false }));
+  };
+
   return (
     <section className="max-h-screen h-screen">
       <div className="flex items-center justify-between px-5">
@@ -51,32 +85,76 @@ const ResetPasswordClient = () => {
         </section>
       </div>
       <div className="my-6 flex items-center justify-center">
-        {step === "forgot" && <ForgotPassword onNext={() => goToStep("otp")} />}
-        {step === "otp" && <OtpInput onNext={() => goToStep("create")} />}
+        {step === "forgot" && (
+          <ForgotPassword
+            onNext={() => goToStep("otp")}
+            showToast={showToast}
+          />
+        )}
+        {step === "otp" && (
+          <OtpInput onNext={() => goToStep("create")} showToast={showToast} />
+        )}
         {step === "create" && (
-          <CreateNewPassword onNext={() => goToStep("success")} />
+          <CreateNewPassword
+            onNext={() => {
+              showToast(
+                "success",
+                "Password Reset Successful!",
+                "Your password has been reset successfully. You can now log in with your new password."
+              );
+              setTimeout(() => goToStep("success"), 1000);
+            }}
+            showToast={showToast}
+          />
         )}
         {step === "success" && <PasswordResetSuccessful />}
       </div>
+
+      {/* Toast Notifications */}
+      {toast.type === "success" && (
+        <SuccessToast
+          heading={toast.heading}
+          description={toast.description}
+          isOpen={toast.isOpen}
+          onClose={closeToast}
+          duration={4000}
+        />
+      )}
+
+      {toast.type === "error" && (
+        <ErrorToast
+          heading={toast.heading}
+          description={toast.description}
+          isOpen={toast.isOpen}
+          onClose={closeToast}
+          duration={4000}
+        />
+      )}
     </section>
   );
 };
 
 export default ResetPasswordClient;
 
-function ForgotPassword({ onNext }: { onNext: () => void }) {
+function ForgotPassword({
+  onNext,
+  showToast,
+}: {
+  onNext: () => void;
+  showToast: (type: ToastType, heading: string, description: string) => void;
+}) {
   const [email, setEmail] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleForgotPassword = async (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     e.preventDefault();
+    setIsLoading(true);
 
     if (!email) {
-      toast.error("Please enter your email address", {
-        duration: 4000,
-        position: "bottom-right",
-      });
+      showToast("error", "Email Required", "Please enter your email address");
+      setIsLoading(false);
       return;
     }
 
@@ -86,32 +164,39 @@ function ForgotPassword({ onNext }: { onNext: () => void }) {
       console.log(response);
 
       if (response.error) {
-        toast.error(response.message || "Failed to send reset code", {
-          duration: 4000,
-          position: "bottom-right",
-        });
+        showToast(
+          "error",
+          "Failed to Send Code",
+          response.message || "Failed to send reset code"
+        );
+        setIsLoading(false);
         return;
       }
 
       if (response.status) {
-        toast.success("Reset code sent to your email", {
-          duration: 4000,
-          position: "bottom-right",
-        });
-        //setCookie("resetUserEmail", { email: email }, { expiresInMinutes: 30 });
+        showToast(
+          "success",
+          "Code Sent Successfully!",
+          "Reset code has been sent to your email"
+        );
         setCookie(
           COOKIE_NAMES.RESET_USER_EMAIL,
           { email: email },
           { expiresInMinutes: 30 }
         );
-        onNext();
+        setTimeout(() => {
+          setIsLoading(false);
+          onNext();
+        }, 1500);
       }
     } catch (error) {
       console.error("Error sending forgot password:", error);
-      toast.error("An error occurred. Please try again.", {
-        duration: 4000,
-        position: "bottom-right",
-      });
+      showToast(
+        "error",
+        "Something Went Wrong",
+        "An error occurred. Please try again."
+      );
+      setIsLoading(false);
     }
   };
 
@@ -136,23 +221,40 @@ function ForgotPassword({ onNext }: { onNext: () => void }) {
               className="text-[#1E1E1E] text-base font-medium focus:outline-none"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
             />
           </div>
         </div>
       </div>
       <button
         onClick={handleForgotPassword}
-        className="bg-[#15BA5C] text-white font-bold text-xl py-3.5 rounded-[10px] hover:bg-[#13a551] w-full"
+        className="bg-[#15BA5C] text-white font-bold text-xl py-3.5 rounded-[10px] hover:bg-[#13a551] w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         type="submit"
+        disabled={isLoading}
       >
-        Send 4 Digit Code
+        {isLoading ? (
+          <>
+            <Loader2 className="animate-spin" size={20} />
+            Sending Code...
+          </>
+        ) : (
+          "Send 4 Digit Code"
+        )}
       </button>
     </form>
   );
 }
 
-function OtpInput({ onNext }: { onNext: () => void }) {
+function OtpInput({
+  onNext,
+  showToast,
+}: {
+  onNext: () => void;
+  showToast: (type: ToastType, heading: string, description: string) => void;
+}) {
   const [otp, setOtp] = useState(["", "", "", ""]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isResending, setIsResending] = useState<boolean>(false);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
   const router = useRouter();
 
@@ -167,12 +269,11 @@ function OtpInput({ onNext }: { onNext: () => void }) {
       inputsRef.current[index + 1]?.focus();
     }
   };
-  //const user = getCookie<{ email: string }>("resetUserEmail");
+
   const user = getCookie<{ email: string }>(COOKIE_NAMES.RESET_USER_EMAIL);
   if (!user) {
-    router.push("/reset-password?step=otp");
+    router.push("/reset-password?step=forgot");
   }
-  console.log("This is user---", user);
 
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
@@ -185,19 +286,28 @@ function OtpInput({ onNext }: { onNext: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp.some((digit) => digit === "")) return;
+    setIsLoading(true);
+
+    if (otp.some((digit) => digit === "")) {
+      showToast("error", "Incomplete Code", "Please enter all 4 digits");
+      setIsLoading(false);
+      return;
+    }
+
     const fullOtp = otp.join("");
-    // setCookie("tokenUserEmail", { token: fullOtp }, { expiresInMinutes: 30 });
     setCookie(
       COOKIE_NAMES.TOKEN_USER_EMAIL,
       { token: fullOtp },
       { expiresInMinutes: 30 }
     );
-    
-    onNext();
+    setTimeout(() => {
+      setIsLoading(false);
+      onNext();
+    }, 1500);
   };
 
   const handleResendOtpToEmail = async () => {
+    setIsResending(true);
     try {
       if (!user?.email) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -206,25 +316,32 @@ function OtpInput({ onNext }: { onNext: () => void }) {
       });
       console.log(response);
       if (response.status) {
-        // setCookie(
-        //   "resetUserEmail",
-        //   { email: user.email },
-        //   { expiresInMinutes: 30 }
-        // );
-
         setCookie(
           COOKIE_NAMES.RESET_USER_EMAIL,
           { email: user.email },
           { expiresInMinutes: 30 }
         );
-        toast.success("Reset code sent to your email", {
-          duration: 4000,
-          position: "bottom-right",
-        });
+        showToast(
+          "success",
+          "Code Resent!",
+          "A new reset code has been sent to your email"
+        );
+      } else {
+        showToast(
+          "error",
+          "Failed to Resend",
+          "Could not resend the code. Please try again."
+        );
       }
     } catch (error) {
       console.error("Error resending email", error);
-      // Show error message here as needed
+      showToast(
+        "error",
+        "Something Went Wrong",
+        "An error occurred while resending the code"
+      );
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -258,80 +375,126 @@ function OtpInput({ onNext }: { onNext: () => void }) {
                 ref={(el) => {
                   inputsRef.current[index] = el;
                 }}
-                className="w-[55px] h-14 text-center text-xl border rounded-lg focus:outline-none focus:border-[#15BA5C] border-gray-300"
+                className="w-[55px] h-14 text-center text-xl border rounded-lg focus:outline-none focus:border-[#15BA5C] border-gray-300 disabled:opacity-50"
+                disabled={isLoading}
               />
             ))}
           </div>
 
-          <p className="text-sm text-gray-600">
-            Didn’t receive the email?
+          <p className="text-sm flex items-center text-gray-600">
+            Didn&apos;t receive the email?
             <button
               type="button"
-              className="text-black font-medium underline hover:text-green-600 ml-1"
+              className="text-black font-medium underline hover:text-green-600 ml-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
               onClick={handleResendOtpToEmail}
+              disabled={isResending}
             >
-              Click to resend
+              {isResending ? (
+                <>
+                  <Loader2 className="animate-spin" size={12} />
+                  Resending...
+                </>
+              ) : (
+                "Click to resend"
+              )}
             </button>
           </p>
         </div>
       </div>
       <button
-        className="bg-[#15BA5C] text-white font-bold text-xl py-3.5 rounded-[10px] hover:bg-[#13a551] w-full"
+        className="bg-[#15BA5C] text-white font-bold text-xl py-3.5 rounded-[10px] hover:bg-[#13a551] w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         type="submit"
+        disabled={isLoading}
       >
-        Continue
+        {isLoading ? (
+          <>
+            <Loader2 className="animate-spin" size={20} />
+            Verifying...
+          </>
+        ) : (
+          "Continue"
+        )}
       </button>
     </form>
   );
 }
 
-function CreateNewPassword({ onNext }: { onNext: () => void }) {
+function CreateNewPassword({
+  onNext,
+  showToast,
+}: {
+  onNext: () => void;
+  showToast: (type: ToastType, heading: string, description: string) => void;
+}) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const strength = getStrength(newPassword);
   const { label } = getStrengthLabel(strength);
 
-  // const user = getCookie<{ email: string }>("resetUserEmail");
   const user = getCookie<{ email: string }>(COOKIE_NAMES.RESET_USER_EMAIL);
-  // const userToken = getCookie<{ token: string }>("tokenUserEmail");
-  const userToken = getCookie<{ token: string }>(
-    COOKIE_NAMES.TOKEN_USER_EMAIL
-  );
-  if (!user) {
-  }
+  const userToken = getCookie<{ token: string }>(COOKIE_NAMES.TOKEN_USER_EMAIL);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userToken?.token && !user?.email) return;
+    setIsLoading(true);
+
+    if (!userToken?.token || !user?.email) {
+      showToast(
+        "error",
+        "Session Expired",
+        "Please start the password reset process again"
+      );
+      setIsLoading(false);
+      return;
+    }
 
     if (newPassword !== confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
-    if (strength < 3) {
-      alert("Please choose a stronger password");
+      showToast(
+        "error",
+        "Password Mismatch",
+        "Passwords do not match. Please try again."
+      );
+      setIsLoading(false);
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response: any = await authService.resetPassword({
-      email: user?.email as string,
-      password: newPassword,
-      token: userToken?.token as string,
-    });
-    if (response.status) {
-      onNext();
-      // removeCookie("resetUserEmail");
-      removeCookie(COOKIE_NAMES.RESET_USER_EMAIL);
-      // removeCookie("tokenUserEmail");
-      removeCookie(COOKIE_NAMES.TOKEN_USER_EMAIL);
-    } else{
-      toast.error(response.message || "Failed to reset password", {
-        duration: 4000,
-        position: "bottom-right",
+    if (strength < 3) {
+      showToast("error", "Weak Password", "Please choose a stronger password");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response: any = await authService.resetPassword({
+        email: user.email,
+        password: newPassword,
+        token: userToken.token,
       });
+
+      if (response.status) {
+        removeCookie(COOKIE_NAMES.RESET_USER_EMAIL);
+        removeCookie(COOKIE_NAMES.TOKEN_USER_EMAIL);
+        onNext();
+      } else {
+        showToast(
+          "error",
+          "Reset Failed",
+          response.message || "Failed to reset password. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      showToast(
+        "error",
+        "Something Went Wrong",
+        "An error occurred. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -364,11 +527,13 @@ function CreateNewPassword({ onNext }: { onNext: () => void }) {
                 className="text-[#1E1E1E] text-base font-medium focus:outline-none pr-8"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                disabled={isLoading}
               />
               <button
                 type="button"
-                className="absolute right-2 top-4 text-[#1E1E1E] cursor-pointer"
+                className="absolute right-2 top-4 text-[#1E1E1E] cursor-pointer disabled:opacity-50"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -392,11 +557,13 @@ function CreateNewPassword({ onNext }: { onNext: () => void }) {
                 className="text-[#1E1E1E] text-base font-medium focus:outline-none pr-8"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={isLoading}
               />
               <button
                 type="button"
-                className="absolute right-2 top-4 text-[#1E1E1E] cursor-pointer"
+                className="absolute right-2 top-4 text-[#1E1E1E] cursor-pointer disabled:opacity-50"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                disabled={isLoading}
               >
                 {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -412,10 +579,18 @@ function CreateNewPassword({ onNext }: { onNext: () => void }) {
         </div>
       </div>
       <button
-        className="bg-[#15BA5C] text-white font-bold text-xl py-3.5 rounded-[10px] hover:bg-[#13a551] w-full"
+        className="bg-[#15BA5C] text-white font-bold text-xl py-3.5 rounded-[10px] hover:bg-[#13a551] w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         type="submit"
+        disabled={isLoading}
       >
-        Continue
+        {isLoading ? (
+          <>
+            <Loader2 className="animate-spin" size={20} />
+            Resetting Password...
+          </>
+        ) : (
+          "Continue"
+        )}
       </button>
     </form>
   );

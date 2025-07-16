@@ -196,9 +196,11 @@ export type Outlet = {
   description: string | null;
   address: string | null;
   state: string | null;
+
+  isOnboarded: boolean;
   //Just Added
-  city?:string
-  email:string
+  city?: string;
+  email: string;
   postalCode: string | null;
   phoneNumber: string | null;
   country: string | null;

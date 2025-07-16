@@ -25,6 +25,8 @@ import { useBusiness } from "@/hooks/useBusiness";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import { useBusinessStore } from "@/stores/useBusinessStore";
 import { Business } from "@/types/business";
+import { toast } from "sonner";
+import { getPhoneCountries, PhoneCountry } from "@/utils/getPhoneCountries";
 
 interface BusinessDetailsModalProps {
   isOpen: boolean;
@@ -56,6 +58,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     postalCode: "",
   });
   const { fetchBusinessData } = useBusinessStore();
+  console.log(outlet, "This is the outlet stuff ")
 
   const [newBusinessType, setNewBusinessType] = useState("");
   const [businessTypes, setBusinessTypes] = useState(defaultBusinessTypes);
@@ -86,6 +89,8 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
   const [uploadError, setUploadError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImageDeleted, setIsImageDeleted] = useState(false);
+
 
   // Filter countries based on search term
   const filteredCountries = countries.filter((country) =>
@@ -204,7 +209,8 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     if (outlet?.outlet.logoUrl && !uploadedImageUrl) {
       setUploadedImageUrl(outlet.outlet.logoUrl);
     }
-  }, [outlet?.outlet.logoUrl, uploadedImageUrl]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ uploadedImageUrl]);
 
   const handleBusinessTypeSelect = (type: string) => {
     setBusinessType(type);
@@ -251,7 +257,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   // Dummy form submission function
   const handleSubmit = async (e: React.FormEvent) => {
     setLoading(true);
-
     e.preventDefault();
     console.log(phoneError);
 
@@ -263,19 +268,29 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
       revenueRange: "10-500",
       currency: getCurrencyByCountryName(country),
       logoUrl: uploadedImageUrl,
+      // Option 1: Send country code separately
+      phoneCountryCode: selectedPhoneCountry?.dialCode || "",
+      phoneCountryIso: selectedPhoneCountry?.isoCode || "",
+
+      // Option 2: Send full phone number with country code
+      phoneNumber: selectedPhoneCountry?.dialCode
+        ? `${selectedPhoneCountry.dialCode}${details.phone}`
+        : details.phone,
     };
+
     console.log(finalDetails);
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response: any = await settingsService.updateBusinessDetails(
       finalDetails,
       outletId as number
     );
-    if (response.status) {
 
-        onSuccess(
-          "Update Successful!",
-          "Your Details have been updated successfully"
-        );
+    if (response.status) {
+      onSuccess(
+        "Update Successful!",
+        "Your Details have been updated successfully"
+      );
       setLoading(false);
       setDetails({
         name: "",
@@ -289,14 +304,22 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
         businessType: "",
       });
       setBusinessType("");
+      setIsImageDeleted(false); // Reset deleted state
       setUploadedImageUrl("");
       setSelectedCountry(null);
       setSelectedState(null);
       setSelectedCity(null);
+      setSelectedPhoneCountry(null); // Reset phone country as well
+      await fetchBusinessData();
       onClose();
     }
-    await fetchBusinessData();
+    if (response.error) {
+      const combinedMessage = response.message.join(". ") + ".";
+      setLoading(false);
+      toast.error(combinedMessage);
+    }
   };
+  
 
   const handleChange = (field: keyof BusinessDetailsType, value: string) => {
     setDetails((prev) => ({ ...prev, [field]: value }));
@@ -346,6 +369,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   const handleFileSelect = async (file: File) => {
     setUploadError("");
     setUploadedImageUrl("");
+    setIsImageDeleted(false);
 
     const allowedTypes = ["image/jpeg", "image/png", "image/svg+xml"];
 
@@ -408,15 +432,79 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
 
   // Function to handle image deletion - to be implemented later
   const handleDeleteImage = () => {
-    // TODO: Implement actual image deletion logic here
-    console.log("Deleting image:", uploadedImageUrl);
-
     setUploadedImageUrl("");
+    setIsImageDeleted(true); // Mark image as deleted
+
+    // Clear any upload errors
     setUploadError("");
+
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+
+    console.log("Image deleted successfully");
   };
+  
+
+  
+
+  const [phoneCountries, setPhoneCountries] = useState<PhoneCountry[]>([]);
+  const [selectedPhoneCountry, setSelectedPhoneCountry] =
+    useState<PhoneCountry | null>(null);
+  const [isPhoneCountryOpen, setIsPhoneCountryOpen] = useState(false);
+  const [phoneCountrySearchTerm, setPhoneCountrySearchTerm] = useState("");
+
+  const validatePhoneNumber = (phone: string, countryCode: string): boolean => {
+    if (!phone || !countryCode) return false;
+    
+    try {
+      const phoneNumber = parsePhoneNumberFromString(phone, countryCode as import("libphonenumber-js").CountryCode);
+      return phoneNumber ? phoneNumber.isValid() : false;
+    } catch {
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    const phoneCountriesData = getPhoneCountries();
+    setPhoneCountries(phoneCountriesData);
+
+    // Set default phone country to match selected country or Nigeria
+    if (selectedCountry) {
+      const matchingPhoneCountry = phoneCountriesData.find(
+        (pc) => pc.isoCode === selectedCountry.isoCode
+      );
+      if (matchingPhoneCountry) {
+        setSelectedPhoneCountry(matchingPhoneCountry);
+      }
+    } else {
+      // Default to Nigeria
+      const nigeria = phoneCountriesData.find((pc) => pc.isoCode === "NG");
+      if (nigeria) {
+        setSelectedPhoneCountry(nigeria);
+      }
+    }
+  }, [selectedCountry]);
+  const handlePhoneCountrySelect = (phoneCountry: PhoneCountry) => {
+    setSelectedPhoneCountry(phoneCountry);
+    setIsPhoneCountryOpen(false);
+    setPhoneCountrySearchTerm("");
+    // Clear phone error when country changes
+    setPhoneError("");
+    // Clear phone number when country changes
+    handleChange("phone", "");
+  };
+
+  const filteredPhoneCountries = phoneCountries.filter(
+    (country) =>
+      country.name
+        .toLowerCase()
+        .includes(phoneCountrySearchTerm.toLowerCase()) ||
+      country.dialCode.includes(phoneCountrySearchTerm)
+  );
+  
+
+  
 
   return (
     <Modal
@@ -452,28 +540,131 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
             )}`}
           />
 
-          <Input
-            label="Phone Number"
-            value={details.phone}
-            onChange={(e) => {
-              handleChange("phone", e.target.value);
-              setPhoneError("");
-              if (selectedCountry) {
-                const phoneNumber = parsePhoneNumberFromString(
-                  e.target.value,
-                  selectedCountry.isoCode as import("libphonenumber-js").CountryCode
-                );
-                if (!phoneNumber || !phoneNumber.isValid()) {
-                  setPhoneError("Invalid phone number for selected country");
-                }
-              }
-            }}
-            placeholder="Enter phone number"
-            disabled={!selectedCountry}
-            className={`w-full px-4 py-3 text-left bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors ${getDisabledStyles(
-              details.phone
-            )} ${!selectedCountry ? "cursor-not-allowed" : ""}`}
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone Number
+            </label>
+            <div className="flex">
+              {/* Country Code Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsPhoneCountryOpen(!isPhoneCountryOpen);
+                  }}
+                  className="flex items-center px-3 py-3 bg-white border border-gray-300 rounded-l-lg shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors"
+                >
+                  {selectedPhoneCountry && (
+                    <>
+                      <Image
+                        src={selectedPhoneCountry.flag}
+                        alt={selectedPhoneCountry.name + " flag"}
+                        className="w-6 h-4 mr-2 rounded-sm border border-gray-200 object-cover"
+                        width={24}
+                        height={18}
+                      />
+                      <span className="text-gray-900 mr-2 font-medium">
+                        {selectedPhoneCountry.dialCode}
+                      </span>
+                    </>
+                  )}
+                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                </button>
+
+                {isPhoneCountryOpen && (
+                  <div className="absolute z-20 left-0 mt-1 w-80 bg-white border border-gray-300 rounded-lg shadow-lg">
+                    <div className="px-3 py-2 border-b border-gray-200">
+                      <input
+                        type="text"
+                        value={phoneCountrySearchTerm}
+                        onChange={(e) =>
+                          setPhoneCountrySearchTerm(e.target.value)
+                        }
+                        placeholder="Search country or code..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#15BA5C] text-sm"
+                        autoFocus
+                      />
+                    </div>
+
+                    <div className="py-1 max-h-60 overflow-y-auto">
+                      {filteredPhoneCountries.length > 0 ? (
+                        filteredPhoneCountries.map((phoneCountry) => (
+                          <button
+                            key={phoneCountry.isoCode}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handlePhoneCountrySelect(phoneCountry);
+                            }}
+                            className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between group"
+                          >
+                            <div className="flex items-center">
+                              <Image
+                                src={phoneCountry.flag}
+                                alt={phoneCountry.name + " flag"}
+                                className="w-6 h-4 mr-3 rounded-sm border border-gray-200 object-cover"
+                                width={24}
+                                height={18}
+                              />
+                              <div>
+                                <div className="text-gray-900 font-medium">
+                                  {phoneCountry.name}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {phoneCountry.dialCode}
+                                </div>
+                              </div>
+                            </div>
+                            {selectedPhoneCountry?.isoCode ===
+                              phoneCountry.isoCode && (
+                              <Check className="h-4 w-4 text-[#15BA5C]" />
+                            )}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-sm text-gray-500">
+                          No countries found.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Phone Number Input */}
+              <input
+                type="tel"
+                value={details.phone}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleChange("phone", value);
+                  setPhoneError("");
+
+                  if (selectedPhoneCountry && value.trim()) {
+                    const isValid = validatePhoneNumber(
+                      value,
+                      selectedPhoneCountry.isoCode
+                    );
+                    if (!isValid) {
+                      setPhoneError(
+                        `Invalid phone number for ${selectedPhoneCountry.name}`
+                      );
+                    }
+                  }
+                }}
+                placeholder="Enter phone number"
+                className={`flex-1 px-4 py-3 bg-white border border-l-0 border-gray-300 rounded-r-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#15BA5C] transition-colors ${
+                  phoneError ? "border-red-300" : "hover:border-gray-400"
+                }`}
+              />
+            </div>
+
+            {/* Phone Error Message */}
+            {phoneError && (
+              <p className="mt-1 text-sm text-red-600">{phoneError}</p>
+            )}
+          </div>
 
           {/* Country Dropdown */}
           <div>
@@ -840,8 +1031,8 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
             Logo
           </label>
 
-          {/* Show existing logo if available */}
-          {uploadedImageUrl || outlet?.outlet.logoUrl ? (
+          {/* Show existing logo if available and not deleted */}
+          {(uploadedImageUrl || outlet?.outlet.logoUrl) && !isImageDeleted ? (
             <div className="w-full mb-4">
               <section className="relative h-[250px] w-full border border-gray-200 rounded-lg overflow-hidden">
                 <Image
@@ -933,8 +1124,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
               </div>
             </div>
           )}
-
-          {/* Upload area - always show for uploading/changing logo */}
 
           {/* Error Message */}
           {uploadError && (

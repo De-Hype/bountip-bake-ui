@@ -25,7 +25,7 @@ type BusinessStore = {
   setSelectedOutletId: (id: number) => void;
 };
 
-export const useBusinessStore = create<BusinessStore>((set) => ({
+export const useBusinessStore = create<BusinessStore>((set, get) => ({
   business: null,
   outlets: [],
   selectedOutletId: null,
@@ -34,6 +34,7 @@ export const useBusinessStore = create<BusinessStore>((set) => ({
 
   fetchBusinessData: async () => {
     set({ loading: true, error: null });
+
     try {
       const res = (await businessService.getUserBusiness(
         COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
@@ -44,8 +45,18 @@ export const useBusinessStore = create<BusinessStore>((set) => ({
           ? res.data.outlets
           : [res.data.outlets];
 
-        const mainOutlet = outlets.find((o) => o.outlet.isMainLocation);
-        const selectedId = mainOutlet?.outlet.id || outlets[0]?.outlet.id || null;
+        const currentSelectedId = get().selectedOutletId;
+
+        // Check if the current selected outlet still exists
+        const selectedExists = outlets.some(
+          (o) => o.outlet.id === currentSelectedId
+        );
+
+        const selectedId = selectedExists
+          ? currentSelectedId
+          : outlets.find((o) => o.outlet.isMainLocation)?.outlet.id ||
+            outlets[0]?.outlet.id ||
+            null;
 
         set({
           business: res.data.business,
@@ -69,7 +80,6 @@ export const useBusinessStore = create<BusinessStore>((set) => ({
   },
 
   setSelectedOutletId: (id) => set({ selectedOutletId: id }),
-
-  
 }));
+
 
