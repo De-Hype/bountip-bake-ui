@@ -73,7 +73,7 @@ class SettingsService {
   async deleteBusinessLocation(outletId: number | string) {
     return this.request.delete(
       `/outlet/${outletId}`,
-
+      null,
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }

@@ -25,7 +25,6 @@ import { useBusiness } from "@/hooks/useBusiness";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import { useBusinessStore } from "@/stores/useBusinessStore";
 import { Business } from "@/types/business";
-import { toast } from "sonner";
 import { getPhoneCountries, PhoneCountry } from "@/utils/getPhoneCountries";
 
 interface BusinessDetailsModalProps {
@@ -33,6 +32,7 @@ interface BusinessDetailsModalProps {
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
   outletId: string | number | null;
+  onError: (heading: string, description: string) => void;
 }
 
 const defaultBusinessTypes = ["Bakery", "Restaurant", "Bar"];
@@ -43,6 +43,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   onClose,
   outletId,
   onSuccess,
+  onError,
 }) => {
   const outlet = useSelectedOutlet();
   const business = useBusiness() as Business;
@@ -316,7 +317,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     if (response.error) {
       const combinedMessage = response.message.join(". ") + ".";
       setLoading(false);
-      toast.error(combinedMessage);
+      onError("Update Failed", combinedMessage);
     }
   };
   

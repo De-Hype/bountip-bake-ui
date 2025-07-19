@@ -1,7 +1,10 @@
 "use client";
 import AssetsFiles from "@/assets";
-// import LoadingScreen from "@/components/Loaders/LoadingScreen";
 import SuccessModal from "@/components/Modals/Auth/SuccessModal";
+import ErrorToast from "@/components/Modals/Errors/ErrorModal";
+// import LoadingScreen from "@/components/Loaders/LoadingScreen";
+import SuccessToast from "@/components/Modals/Success/SuccessModal";
+
 import authService from "@/services/authServices";
 import { useModalStore } from "@/stores/useUIStore";
 import { COOKIE_NAMES, getCookie, setCookie } from "@/utils/cookiesUtils";
@@ -9,9 +12,18 @@ import { Mail } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 
 const VerifyPage = () => {
+  const [successToast, setSuccessToast] = useState({
+    isOpen: false,
+    heading: "",
+    description: "",
+  });
+  const [errorToast, setErrorToast] = useState({
+    isOpen: false,
+    heading: "",
+    description: "",
+  });
   const [otp, setOtp] = useState(["", "", "", ""]);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
   const { setShowSignUpSuccessModal, showsignUpSuccessModal } = useModalStore();
@@ -79,12 +91,12 @@ const VerifyPage = () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response: any = await authService.verifyEmail(data);
-    
 
     if (response.status) {
-      toast.success("Email verified successfully", {
-        duration: 4000,
-        position: "bottom-right",
+      setSuccessToast({
+        isOpen: true,
+        heading: "Email verified successfully",
+        description: "You can now login to your account",
       });
 
       setShowSignUpSuccessModal(true);
@@ -96,23 +108,28 @@ const VerifyPage = () => {
         },
         { expiresInMinutes: 10080 } // 7 days
       );
-    } else{
-      toast.error(response.message || "Invalid OTP", {
-        duration: 4000,
-        position: "bottom-right",
+    } else {
+      setErrorToast({
+        isOpen: true,
+        heading: "Invalid OTP",
+        description: response.message || "Invalid OTP",
       });
       return;
     }
   };
 
   const isOtpComplete = otp.every((digit) => digit !== "");
-  const   handleResendOtp =async()=>{
+  const handleResendOtp = async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response:any = await authService.resendOtp(user.email);
-    if(response.status){
-      toast.success("OTP verification succesful")
+     const response: any = await authService.resendOtp(user.email);
+    if (response.status) {
+      setSuccessToast({
+        isOpen: true,
+        heading: "OTP verification succesful",
+        description: "Your OTP has been sent.",
+      });
     }
-  }
+  };
 
   return (
     <main>
@@ -195,6 +212,20 @@ const VerifyPage = () => {
           </button> */}
         </form>
       </section>
+      <SuccessToast
+        isOpen={successToast.isOpen}
+        heading={successToast.heading}
+        description={successToast.description}
+        onClose={() => setSuccessToast((prev) => ({ ...prev, isOpen: false }))}
+        duration={5000}
+      />
+      <ErrorToast
+        isOpen={errorToast.isOpen}
+        heading={errorToast.heading}
+        description={errorToast.description}
+        onClose={() => setErrorToast((prev) => ({ ...prev, isOpen: false }))}
+        duration={5000}
+      />
       {showsignUpSuccessModal && <SuccessModal />}
     </main>
   );

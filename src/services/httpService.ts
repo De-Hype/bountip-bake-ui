@@ -29,11 +29,14 @@ export class HttpService {
       this.isRefreshing[cookieName] = false;
       return null;
     }
-    console.log(tokens, "This are my tokens")
+    console.log(tokens, "This are my tokens");
     try {
       const response = await fetch(`${this.baseUrl}/auth/refresh`, {
         method: "GET",
-        headers: { "Content-Type": "application/json", "Authorization":  `Bearer ${tokens.refreshToken}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokens.refreshToken}`,
+        },
       });
 
       if (!response.ok) throw new Error("Refresh token failed");
@@ -122,9 +125,10 @@ export class HttpService {
 
   async delete<T>(
     path: string,
+    data: unknown,
     cookieName?: COOKIE_NAMES
   ): Promise<T | HttpError> {
-    return this.requestWithRetry<T>("DELETE", path, null, cookieName);
+    return this.requestWithRetry<T>("DELETE", path, data, cookieName);
   }
 
   async upload<T>(
@@ -148,7 +152,7 @@ export class HttpService {
 
       //return fetch(`${this.baseUrl}${path}`, {
       return fetch(`https://seal-app-wzqhf.ondigitalocean.app${path}`, {
-       //return fetch(`http://localhost:8000${path}`, {
+        //return fetch(`http://localhost:8000${path}`, {
         method: "POST",
         // headers,
         body: formData,

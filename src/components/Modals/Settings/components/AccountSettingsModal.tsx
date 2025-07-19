@@ -16,7 +16,6 @@ export const AccountSettingsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 }> = ({ isOpen, onClose, onSuccess }) => {
   const [activeTab, setActiveTab] = useState<"taxes" | "service">("taxes");
   const { fetchCategory, categories } = useProductManagementStore();
@@ -158,9 +157,21 @@ export const AccountSettingsModal: React.FC<{
 
     console.log(newData);
     // Here you would typically save to your backend
-    alert("Tax configuration saved successfully!");
+    onSuccess("Save Successful!", "Your Tax has been saved successfully");
   };
-
+  const deleteTax = async (id: string) => {
+    const response = (await settingsService.deleteTax(
+      outletId as number,
+      id
+    )) as ApiResponseType;
+    console.log(response, "This is the response");
+    if (response.status) {
+      onSuccess("Tax Deleted", "Tax has been deleted successfully");
+      setTaxes((prev) => prev.filter((tax) => tax.id !== id));
+    } else {
+      toast.error("Failed to delete tax");
+    }
+  };
   return (
     <Modal
       image={SettingFiles.AccountSettings}
@@ -202,6 +213,7 @@ export const AccountSettingsModal: React.FC<{
                 categories={categoriesList}
                 onUpdate={updateTax}
                 onAddCategory={addNewCategory}
+                onDelete={deleteTax}
               />
             ))}
 
@@ -249,6 +261,7 @@ interface TaxItemComponentProps {
   categories: DropdownOption[];
   onUpdate: (id: string, updates: Partial<TaxItem>) => void;
   onAddCategory: (categoryName: string) => void;
+  onDelete: (id: string) => void;
 }
 
 const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
@@ -526,7 +539,7 @@ const ServiceCharge: React.FC = () => {
   );
   const outlet = useSelectedOutlet();
   const outletId = outlet?.outlet.id as unknown as string;
-  console.log(outlet, "This is outletd")
+  console.log(outlet, "This is outletd");
   useEffect(() => {
     if (!outlet || !outlet.outlet?.serviceCharges?.charges?.length) return;
 
@@ -540,8 +553,6 @@ const ServiceCharge: React.FC = () => {
     }
   }, [outlet]);
 
-  
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log(outletId, serviceName, Number(serviceRate), selectedOption);
@@ -551,7 +562,7 @@ const ServiceCharge: React.FC = () => {
       const response = await settingsService.createCharges(
         outletId,
         serviceName,
-        Number(serviceRate),  
+        Number(serviceRate),
         selectedOption
       );
       console.log(response, "This is the response");
