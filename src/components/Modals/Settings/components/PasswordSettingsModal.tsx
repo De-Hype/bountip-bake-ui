@@ -4,7 +4,6 @@ import { Input } from "../ui/Input";
 import { Eye, EyeOff } from "lucide-react";
 import SettingFiles from "@/assets/icons/settings";
 import settingsService from "@/services/settingsService";
-import { toast } from "sonner";
 import { COOKIE_NAMES, removeCookie } from "@/utils/cookiesUtils";
 import { useRouter } from "next/navigation";
 
@@ -12,6 +11,7 @@ interface PasswordSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
 type PasswordSettingsRespone = {
   status: boolean;
@@ -22,7 +22,8 @@ type PasswordSettingsRespone = {
 export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  onError
 }) => {
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -75,16 +76,9 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
         router.push("/auth?signin");
         return;
       }
-      toast.error("Incorrect credentials - failed to update password", {
-        duration: 3000,
-        position: "top-right",
-        style: { backgroundColor: "#f87171", color: "#fff" },
-      });
+          onError("Incorrect credentials", "Incorrect credentials - failed to update password");
     } catch (error: unknown) {
-      toast.error("Failed to update password", {
-        duration: 3000,
-        position: "top-right",
-      });
+      onError("Failed to update password", "Failed to update password");
       console.error("Error updating password:", error);
       return;
     } finally {

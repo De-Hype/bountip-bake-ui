@@ -10,13 +10,13 @@ import settingsService from "@/services/settingsService";
 import productManagementService from "@/services/productManagementService";
 import { SystemDefaults } from "@/types/systemDefaults";
 import { ApiResponseType } from "@/types/httpTypes";
-import { toast } from "sonner";
 
 export const AccountSettingsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
-}> = ({ isOpen, onClose, onSuccess }) => {
+  onError: (heading: string, description: string) => void;
+}> = ({ isOpen, onClose, onSuccess, onError }) => {
   const [activeTab, setActiveTab] = useState<"taxes" | "service">("taxes");
   const { fetchCategory, categories } = useProductManagementStore();
   const [taxes, setTaxes] = useState<TaxItem[]>([]);
@@ -115,7 +115,7 @@ export const AccountSettingsModal: React.FC<{
       setCategoriesList([...categoriesList, newCategory]);
       return;
     } else {
-      toast.error("Failed to create a category");
+      onError("Failed to create a category", "Failed to create a category");
     }
   };
 
@@ -169,7 +169,7 @@ export const AccountSettingsModal: React.FC<{
       onSuccess("Tax Deleted", "Tax has been deleted successfully");
       setTaxes((prev) => prev.filter((tax) => tax.id !== id));
     } else {
-      toast.error("Failed to delete tax");
+      onError("Failed", "Failed to delete tax");
     }
   };
   return (

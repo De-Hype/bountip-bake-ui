@@ -10,7 +10,6 @@ import { Dropdown } from "../ui/Dropdown";
 import settingsService from "@/services/settingsService";
 import { useBusinessStore } from "@/stores/useBusinessStore";
 import { ApiResponseType } from "@/types/httpTypes";
-import { toast } from "sonner";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import Image from "next/image";
 import LabelPreview from "./LabelPreview";
@@ -19,6 +18,7 @@ interface LabellingSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
 
 const fontOptions = [
@@ -38,7 +38,8 @@ const paperSizeOptions = [
 export const LabellingSettingsModal: React.FC<LabellingSettingsModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  onError
 }) => {
   const { selectedOutletId, loading } = useBusinessStore();
   const selectedOutlet = useSelectedOutlet();
@@ -133,14 +134,13 @@ export const LabellingSettingsModal: React.FC<LabellingSettingsModalProps> = ({
           "Save Successful!",
           "Your Label has been saved successfully"
         );
-        toast.success("Successfully created the labelling");
         onClose();
       } else {
-        toast.error("Failed to update labelling settings");
+        onError("Failed", "Failed to update labelling settings");
       }
     } catch (error) {
       console.error("Error updating label settings:", error);
-      toast.error("An error occurred while updating settings");
+      onError("An error occurred while updating settings", "An error occurred while updating settings");
     }
   };
 

@@ -6,7 +6,6 @@ import { Input } from "../ui/Input";
 import settingsService from "@/services/settingsService";
 import { useBusinessStore } from "@/stores/useBusinessStore";
 import { ApiResponseType } from "@/types/httpTypes";
-import { toast } from "sonner";
 
 interface PriceTier {
   id: number;
@@ -30,22 +29,26 @@ interface PriceTierFormRef {
   hasFormData: () => boolean;
 }
 
-
 interface PriceTierFormProps {
   onAdd: (tier: Omit<PriceTier, "id" | "isActive">) => void;
+  onError: (heading: string, description: string) => void;
 }
 
 interface PriceSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
+
+// Temporary ID counter for new tiers (ensures uniqueness without uuid)
+let tempIdCounter = -1;
 
 export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
-
+  onSuccess,
+  onError,
 }) => {
   const { selectedOutletId, outlets, fetchBusinessData } = useBusinessStore();
   const [tiers, setTiers] = useState<PriceTier[]>([]);
@@ -75,7 +78,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
   const addTier = (tier: Omit<PriceTier, "id" | "isActive">) => {
     const newTier: PriceTier = {
       ...tier,
-      id: Date.now(), // Temporary ID for new tiers
+      id: tempIdCounter--, // Use decrementing counter for unique temp IDs
       isActive: true,
       isNew: true, // Mark as new
     };
@@ -109,11 +112,11 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
         );
         await fetchBusinessData();
       } else {
-        toast.error("Failed to delete price tier");
+        onError("Failed ", "Failed to delete price tier");
       }
     } catch (error) {
       console.error("Failed to delete tier", error);
-      toast.error("Failed to delete price tier");
+      onError("Failed to delete price tier", "Failed to delete price tier");
     } finally {
       setIsDeleting((prev) => ({ ...prev, [id]: false }));
     }
@@ -182,7 +185,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
       return true;
     } catch (error) {
       console.error("Failed to save tier", error);
-      toast.error("Failed to save price tier");
+      onError("Failed to save price tier", "Failed to save price tier");
       return false;
     }
   };
@@ -201,6 +204,8 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
           setIsSaving(false);
           return;
         }
+        // Add the pending tier to the state so it's managed like others
+        setTiers((prev) => [...prev, pendingTier]);
         tiersToSave.push(pendingTier);
       }
 
@@ -209,7 +214,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
       tiersToSave.push(...newTiers);
 
       if (tiersToSave.length === 0) {
-        toast.info("No new price tiers to save.");
+        onError("No new price tiers to save.", "No new price tiers to save.");
         return;
       }
 
@@ -229,7 +234,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
       const succeeded = results.filter((res) => res.status === "fulfilled");
 
       if (failed.length > 0) {
-        toast.error(`${failed.length} tier(s) failed to save.`);
+        onError(`${failed.length} tier(s) failed to save.`, `${failed.length} tier(s) failed to save.`);
       }
 
       if (succeeded.length > 0) {
@@ -240,13 +245,11 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
       }
     } catch (error) {
       console.error("Failed to save tiers", error);
-      toast.error("An unexpected error occurred while saving price tiers.");
+      onError("An unexpected error occurred while saving price tiers.", "An unexpected error occurred while saving price tiers.");
     } finally {
       setIsSaving(false);
     }
   };
-  
-  
 
   // Helper function to get display values for markup/discount
   const getDisplayValue = (tier: PriceTier) => {
@@ -294,6 +297,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
                     }}
                     onCancel={() => toggleEdit(tier.id)}
                     isLoading={isCurrentlyEditing}
+                    onError={onError}
                   />
                 ) : (
                   <>
@@ -365,7 +369,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
 
         <div>
           <h4 className="font-medium mb-4">Add New Price Tier</h4>
-          <PriceTierForm ref={priceTierFormRef} onAdd={addTier} />
+          <PriceTierForm ref={priceTierFormRef} onAdd={addTier} onError={onError} />
         </div>
 
         {/* Show save button if there are unsaved tiers */}
@@ -394,6 +398,7 @@ interface EditableTierFormProps {
   onSave: (tier: Partial<PriceTier>) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
+  onError: (heading: string, description: string) => void;
 }
 
 const EditableTierForm: React.FC<EditableTierFormProps> = ({
@@ -401,6 +406,7 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
   onSave,
   onCancel,
   isLoading = false,
+  onError,
 }) => {
   const [editedTier, setEditedTier] = useState({
     name: tier.name,
@@ -438,8 +444,8 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
 
   const handleSave = async () => {
     if (!editedTier.name || editedTier.name.trim() === "") {
-      toast.warning("Please enter a price tier name.");
-      return;
+      onError("Please enter a price tier name.", "Please enter a price tier name.");
+      return; 
     }
 
     await onSave({
@@ -589,7 +595,7 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
 export const PriceTierForm = React.forwardRef<
   PriceTierFormRef,
   PriceTierFormProps
->(({ onAdd }, ref) => {
+>(({ onAdd, onError  }, ref) => {
   const [tier, setTier] = useState({
     name: "",
     description: "",
@@ -633,7 +639,7 @@ export const PriceTierForm = React.forwardRef<
 
   const createTierObject = (): PriceTier => {
     return {
-      id: Date.now(),
+      id: tempIdCounter--, // Use decrementing counter for unique temp IDs
       name: tier.name.trim(),
       description: tier.description.trim(),
       pricingRules: {
@@ -686,7 +692,7 @@ export const PriceTierForm = React.forwardRef<
         resetForm();
         return newTier;
       }
-      toast.warning("Price tier must have either a markup or discount rule.");
+      onError("Price tier must have either a markup or discount rule.", "Price tier must have either a markup or discount rule.");
       return null;
     },
 
@@ -696,12 +702,12 @@ export const PriceTierForm = React.forwardRef<
 
   const handleAdd = () => {
     if (!tier.name || tier.name.trim() === "") {
-      toast.warning("Please enter a price tier name.");
+        onError("Please enter a price tier name.", "Please enter a price tier name.");
       return;
     }
     const hasRule = markupEnabled || discountEnabled;
     if (!hasRule) {
-      toast.warning("Please select a pricing rule (markup or discount).");
+        onError("Please select a pricing rule (markup or discount).", "Please select a pricing rule (markup or discount).");
       return;
     }
     addTierInternal();

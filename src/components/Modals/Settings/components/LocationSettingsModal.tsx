@@ -6,7 +6,6 @@ import SettingFiles from "@/assets/icons/settings";
 import Image from "next/image";
 import { Check, Trash2, Loader2 } from "lucide-react";
 import settingsService from "@/services/settingsService";
-import { toast } from "sonner";
 import { useBusiness } from "@/hooks/useBusiness";
 import { usePureOutlets } from "@/hooks/useSelectedOutlet";
 import { ApiResponseType } from "@/types/httpTypes";
@@ -16,12 +15,14 @@ interface LocationSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
 
 export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  onError,
 }) => {
   const outletsList = usePureOutlets();
   const [locations, setLocations] = useState<BusinessLocation[]>([]);
@@ -96,7 +97,8 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
   const addNewLocationField = () => {
     // Only add new field if the last one is complete
     if (!isLastNewLocationComplete()) {
-      toast.error(
+      onError(
+        "Failed to add new location",
         "Please fill in all fields for the current location before adding a new one"
       );
       return;
@@ -134,7 +136,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
       );
     } catch (error) {
       console.error("Error removing location:", error);
-      toast.error("Failed to remove location");
+      onError("Failed to remove location", "Failed to remove location");
     } finally {
       setDeletingNewLocationIndex(null);
     }
@@ -159,11 +161,11 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
           "Your Location has been removed successfully"
         );
       } else {
-        toast.error("Failed to delete location");
+        onError("Failed to delete location", "Failed to delete location");
       }
     } catch (error) {
       console.error("Error deleting location:", error);
-      toast.error("Failed to delete location");
+      onError("Failed to delete location", "Failed to delete location");
     } finally {
       setDeletingLocationId(null);
     }
@@ -224,7 +226,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
       onClose(); // Close the modal after saving
     } catch (error) {
       console.error("Error saving locations", error);
-      toast.error("Failed to save locations");
+        onError("Failed to save locations", "Failed to save locations");
     } finally {
       setIsSaving(false);
     }

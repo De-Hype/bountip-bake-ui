@@ -16,6 +16,7 @@ interface OperatingHoursModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
 
 interface DayHours {
@@ -28,7 +29,8 @@ interface DayHours {
 export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  onError,
 }) => {
   const [operatingHours, setOperatingHours] = useState<DayHours[]>([]);
   const [selectAll, setSelectAll] = useState(false);
@@ -152,14 +154,13 @@ export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
           "Save successful",
           "Your Operating hours has been saved successfully"
         );
-
       } else {
-        toast.error("Failed to update operating hours");
+        onError("Save failed", result.message);
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.log(error);
-      toast.error("An error occurred while updating operating hours");
+        onError("Save failed", "An error occurred while updating operating hours");
     } finally {
       setIsSaving(false);
     }

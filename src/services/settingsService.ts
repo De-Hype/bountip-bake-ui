@@ -152,7 +152,7 @@ class SettingsService {
   }) {
     return this.request.delete(
       `/outlet/${outletId}/price-tier/${priceTierId}`,
-
+      null,
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }
@@ -216,6 +216,7 @@ class SettingsService {
   async deleteTax(outletId: string | number, tierId: string | number) {
     return this.request.delete(
       `/outlet/${outletId}/taxes/${tierId}`,
+      null,
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }

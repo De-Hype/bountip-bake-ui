@@ -59,7 +59,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     postalCode: "",
   });
   const { fetchBusinessData } = useBusinessStore();
-  console.log(outlet, "This is the outlet stuff ")
+  console.log(outlet, "This is the outlet stuff ");
 
   const [newBusinessType, setNewBusinessType] = useState("");
   const [businessTypes, setBusinessTypes] = useState(defaultBusinessTypes);
@@ -91,7 +91,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   const [uploadError, setUploadError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImageDeleted, setIsImageDeleted] = useState(false);
-
 
   // Filter countries based on search term
   const filteredCountries = countries.filter((country) =>
@@ -210,8 +209,8 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     if (outlet?.outlet.logoUrl && !uploadedImageUrl) {
       setUploadedImageUrl(outlet.outlet.logoUrl);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ uploadedImageUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadedImageUrl]);
 
   const handleBusinessTypeSelect = (type: string) => {
     setBusinessType(type);
@@ -263,15 +262,33 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
 
     const { country } = details;
 
+    // Determine the logo URL to send
+    let logoUrlToSend: string | undefined;
+
+    if (isImageDeleted) {
+      // If image was explicitly deleted, send empty string
+      logoUrlToSend = "";
+    } else if (
+      uploadedImageUrl &&
+      uploadedImageUrl !== outlet?.outlet.logoUrl
+    ) {
+      // If a new image was uploaded, send the new URL
+      logoUrlToSend = uploadedImageUrl;
+    } else if (outlet?.outlet.logoUrl && !uploadedImageUrl) {
+      // If there's an existing logo and no new upload, keep the existing one
+      logoUrlToSend = outlet.outlet.logoUrl;
+    }
+    // If no existing logo and no new upload, don't send logoUrl (undefined)
+
     const finalDetails = {
       ...details,
       businessType,
       revenueRange: "10-500",
       currency: getCurrencyByCountryName(country),
-      logoUrl: uploadedImageUrl,
+      ...(logoUrlToSend !== undefined && { logoUrl: logoUrlToSend }),
       // Option 1: Send country code separately
-      phoneCountryCode: selectedPhoneCountry?.dialCode || "",
-      phoneCountryIso: selectedPhoneCountry?.isoCode || "",
+      // phoneCountryCode: selectedPhoneCountry?.dialCode || "",
+      // phoneCountryIso: selectedPhoneCountry?.isoCode || "",
 
       // Option 2: Send full phone number with country code
       phoneNumber: selectedPhoneCountry?.dialCode
@@ -320,7 +337,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
       onError("Update Failed", combinedMessage);
     }
   };
-  
 
   const handleChange = (field: keyof BusinessDetailsType, value: string) => {
     setDetails((prev) => ({ ...prev, [field]: value }));
@@ -445,9 +461,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
 
     console.log("Image deleted successfully");
   };
-  
-
-  
 
   const [phoneCountries, setPhoneCountries] = useState<PhoneCountry[]>([]);
   const [selectedPhoneCountry, setSelectedPhoneCountry] =
@@ -457,9 +470,12 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
 
   const validatePhoneNumber = (phone: string, countryCode: string): boolean => {
     if (!phone || !countryCode) return false;
-    
+
     try {
-      const phoneNumber = parsePhoneNumberFromString(phone, countryCode as import("libphonenumber-js").CountryCode);
+      const phoneNumber = parsePhoneNumberFromString(
+        phone,
+        countryCode as import("libphonenumber-js").CountryCode
+      );
       return phoneNumber ? phoneNumber.isValid() : false;
     } catch {
       return false;
@@ -503,9 +519,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
         .includes(phoneCountrySearchTerm.toLowerCase()) ||
       country.dialCode.includes(phoneCountrySearchTerm)
   );
-  
-
-  
 
   return (
     <Modal

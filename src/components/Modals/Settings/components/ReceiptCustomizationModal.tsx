@@ -13,8 +13,6 @@ import { toast } from "sonner";
 import Image from "next/image";
 import LabelPreview from "./LabelPreview";
 
-
-
 const fontOptions = [
   { value: "productSans", label: "Product Sans" },
   { value: "outfit", label: "Outfit" },
@@ -41,18 +39,19 @@ interface ReceiptCustomizationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
 
 export const ReceiptCustomizationModal: React.FC<
   ReceiptCustomizationModalProps
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-> = ({ isOpen, onClose, onSuccess }) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+> = ({ isOpen, onClose, onSuccess, onError }) => {
   const [activeTab, setActiveTab] = useState<"customer" | "payment">(
     "customer"
   );
   const [formData, setFormData] = useState({
     //New Change
-    showRecieptBranding:false,
+    showRecieptBranding: false,
     showRestaurantName: false,
     fontStyle: "",
     paperSize: "",
@@ -98,7 +97,7 @@ export const ReceiptCustomizationModal: React.FC<
       }
 
       setFormData({
-        showRecieptBranding:false,
+        showRecieptBranding: false,
         showRestaurantName: settings.showBakeryName,
         showPaymentSucessText: settings.showPaymentSuccessText,
         fontStyle: settings.fontStyle,
@@ -148,9 +147,19 @@ export const ReceiptCustomizationModal: React.FC<
       )) as ApiResponseType;
       if (result.status) {
         toast.success("Successfully updated receipt settings");
+        onSuccess(
+          "Save Successful!",
+          "Your Receipt settings have been saved successfully"
+        );
+      } else {
+        onError("Update Failed", "Failed to update receipt settings");
       }
     } catch (error) {
       console.log(error);
+      onError(
+        "Update Failed",
+        "An error occurred while updating receipt settings"
+      );
     }
 
     console.log(imageUrl);

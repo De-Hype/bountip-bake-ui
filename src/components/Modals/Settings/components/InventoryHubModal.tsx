@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Input } from "../ui/Input";
 import settingsService from "@/services/settingsService";
 import { ApiResponseType } from "@/types/httpTypes";
-import { toast } from "sonner";
 import { HubType } from "@/types/settingTypes";
 import { useBusiness } from "@/hooks/useBusiness";
 
@@ -17,7 +16,8 @@ export const InventoryHubModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
-}> = ({ isOpen, onClose, onSuccess }) => {
+  onError: (heading: string, description: string) => void;
+}> = ({ isOpen, onClose, onSuccess, onError }) => {
   const [formData, setFormData] = useState<InventoryForm>({
     name: "",
     address: "",
@@ -46,22 +46,23 @@ export const InventoryHubModal: React.FC<{
         }
       } catch (error) {
         console.error("Error fetching inventory hubs:", error);
-        toast.error("Failed to load inventory hubs.");
+        onError("Failed to load inventory hubs.", "Failed to load inventory hubs.");
       }
     };
 
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId, isOpen]);
   
 
   const handleCreateInventory = async () => {
     if (!formData.name.trim() || !formData.address.trim()) {
-      toast.error("Please fill in both name and location");
+      onError("Please fill in both name and location", "Please fill in both name and location");
       return;
     }
 
     if (!businessId) {
-      toast.error("Business ID not found");
+      onError("Business ID not found", "Business ID not found");
       return;
     }
 
@@ -86,11 +87,11 @@ export const InventoryHubModal: React.FC<{
         });
         onClose();
       } else {
-        toast.error("Inventory Hub failed to create");
+        onError("Inventory Hub failed to create", "Inventory Hub failed to create");
       }
     } catch (error) {
       console.error(error);
-      toast.error("Something went wrong while creating Inventory Hub");
+      onError("Something went wrong while creating Inventory Hub", "Something went wrong while creating Inventory Hub");
     } finally {
       setLoading(false);
     }

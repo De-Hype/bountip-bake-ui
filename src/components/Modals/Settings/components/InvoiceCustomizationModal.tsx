@@ -16,6 +16,7 @@ interface InvoiceCustomizationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
 
 const fontOptions = [
@@ -42,8 +43,8 @@ const columnOptions = [
 
 export const InvoiceCustomizationModal: React.FC<
   InvoiceCustomizationModalProps
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-> = ({ isOpen, onClose, onSuccess }) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+> = ({ isOpen, onClose, onSuccess, onError }) => {
   const [imageUrl, setImageUrl] = useState("");
   const [formData, setFormData] = useState({
     showBakeryName: false,
@@ -104,7 +105,7 @@ export const InvoiceCustomizationModal: React.FC<
         showPaymentSuccess: settings.showPaymentMethod,
         showBusinessLine: false,
         customBusinessText: "",
-        showInvoiceNumber:settings.showInvoiceNumber,
+        showInvoiceNumber: settings.showInvoiceNumber,
         showInvoiceIssueDate: settings.showInvoiceIssueDate,
         showInvoiceDueDate: settings.showInvoiceDueDate,
         showClientName: settings.showInvoiceClientName,
@@ -137,10 +138,26 @@ export const InvoiceCustomizationModal: React.FC<
     }
   }, [isOpen, selectedOutlet]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(imageUrl);
-    // Handle save logic here
+    try {
+      // TODO: Replace with actual API call for invoice settings
+      // const result = await settingsService.updateInvoiceSettings(...)
+      // if (result.status) {
+      //   onSuccess("Save Successful!", "Your Invoice settings have been saved successfully");
+      // } else {
+      //   onError("Update Failed", "Failed to update invoice settings");
+      // }
+      onSuccess(
+        "Save Successful!",
+        "Your Invoice settings have been saved successfully"
+      );
+    } catch (error) {
+      onError(
+        "Update Failed",
+        "An error occurred while updating invoice settings"
+      );
+    }
     onClose();
   };
 
@@ -596,12 +613,13 @@ export const InvoiceCustomizationModal: React.FC<
           </form>
         </div>
         <div className="flex-1/2">
-        <LabelPreview formData={formData} imageUrl={imageUrl} type="invoice" />
+          <LabelPreview
+            formData={formData}
+            imageUrl={imageUrl}
+            type="invoice"
+          />
         </div>
       </section>
     </Modal>
   );
 };
-
-
-

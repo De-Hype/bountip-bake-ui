@@ -10,6 +10,7 @@ interface PaymentMethodsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
 
 const defaultMethods: PaymentMethod[] = [
@@ -21,8 +22,8 @@ const defaultMethods: PaymentMethod[] = [
 export const PaymentMethodsModal: React.FC<PaymentMethodsModalProps> = ({
   isOpen,
   onClose,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onSuccess
+  onSuccess,
+  onError,
 }) => {
   const [methods, setMethods] = useState<PaymentMethod[]>(defaultMethods);
   const [customName, setCustomName] = useState("");
