@@ -13,16 +13,17 @@ import Image from "next/image";
 import { useProductManagementStore } from "@/stores/useProductManagementStore";
 import { toast } from "sonner";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
-// import Pagination from "../Pagination/Pagination";
-// import { formatDate } from "@/utils/getTimers";
 import { calculateTierPrice } from "@/utils/pricingRule";
 import { SystemDefaults } from "@/types/systemDefaults";
+import { getCurrencySymbolByCountry } from "@/utils/getCurrencySymbol";
+import CreatePriceTier from "./ui/CreatePriceTier";
+import settingsService from "@/services/settingsService";
 
 interface CreateProductModalsProps {
   size?: "sm" | "md" | "lg" | "xl" | "full" | number;
   isOpen: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onClose:any
+  onClose: any;
 }
 
 const units = ["Mg", "Kg", "T"];
@@ -59,16 +60,27 @@ interface Allergen {
   isSelected: boolean;
 }
 
+const tabs = [
+  { id: "basic", label: "Basic Information" },
+  { id: "modifiers", label: "Modifiers" },
+] as const;
+type modalType = "create" | "edit";
 const CreateProductModals: React.FC<CreateProductModalsProps> = ({
   isOpen,
   size = "md",
-  onClose
+  onClose,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeTabForCreate, setActiveTabForCreate] = useState<
+    "basic" | "modifier"
+  >("basic");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isAddingPriceTier, setIsAddingPriceTier] = useState(false);
+  const [isDeletingPriceTier, setIsDeletingPriceTier] = useState(false);
+  const [createPriceTier, setCreatePriceTier] = useState<boolean>(false);
 
   // Zustand store
   const {
@@ -213,7 +225,6 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
           isActive: tier.isActive,
           checked: selectedProduct.priceTierId === tier.id, // Check if this tier is selected
         })) || [];
-        
 
       setFormData({
         productName: selectedProduct.name,
@@ -224,7 +235,7 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
         description: selectedProduct.description || "",
         preparationArea: selectedProduct.preparationArea || "",
         hasAllergens: !!selectedProduct.allergenList,
-        allergens: [],
+        allergens: selectedProduct.allergenList?.allergies || [],
         leadTimeHours:
           Math.floor((selectedProduct.leadTime || 0) / 3600).toString() || "",
         leadTimeMinutes:
@@ -250,9 +261,10 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
   const handleProductSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Get the selected price tier ID
-    const selectedPriceTier = formData.priceTiers.find((tier) => tier.checked);
-    const selectedPriceTierId = selectedPriceTier ? selectedPriceTier.id : null;
+    // Get all selected price tier IDs
+    const selectedPriceTierIds = formData.priceTiers
+      .filter((tier) => tier.checked)
+      .map((tier) => tier.id);
 
     // VALIDATION STEP
     const requiredFields = [
@@ -296,7 +308,8 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
       category: formData.category,
       price: parseFloat(formData.sellingPrice),
       preparationArea: formData.preparationArea,
-      priceTierId: selectedPriceTierId, // Use the actual selected tier ID
+      priceTierId:
+        selectedPriceTierIds.length > 0 ? selectedPriceTierIds : null, // Use array of selected tier IDs
       allergenList: formData.hasAllergens
         ? {
             allergies: formData.allergens
@@ -310,37 +323,67 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
       isMainLocation: true,
       logoHash: null,
     };
-    console.log(productData, )
+    console.log(productData);
 
     try {
+      // CREATE new product
+      const response = (await productManagementService.createProduct(
+        outletId as number,
+        productData
+      )) as ApiResponseType;
 
-        // CREATE new product
-        const response = (await productManagementService.createProduct(
-          outletId as number,
-          productData
-        )) as ApiResponseType;
-
-        if (response.status) {
-          // Add the new product to store (assuming API returns the created product)
-          const newProduct = {
-            ...productData,
-            id: response.data?.id || Date.now(), // Fallback ID
-          };
-          addProduct(newProduct);
-          toast.success("Product created successfully");
-          setProductClicked(false);
-        } else {
-          toast.error("Error creating product");
-        }
-      
+      if (response.status) {
+        // Add the new product to store (assuming API returns the created product)
+        const newProduct = {
+          ...productData,
+          id: response.data?.id || Date.now(), // Fallback ID
+        };
+        addProduct(newProduct);
+        toast.success("Product created successfully");
+        setProductClicked(false);
+      } else {
+        toast.error("Error creating product");
+      }
     } catch (error) {
       console.error("Error saving product:", error);
       toast.error("An error occurred while saving the product");
     }
   };
+  const handleAddPriceTier = async (tier: PriceTier) => {
+    const response = await settingsService.addPriceTier({
+      outletId: outletId,
+      name: tier.name,
+      description: tier.description,
+      isActive: true,
+      pricingRules: {
+        markupPercentage: tier.markupPercent || 0,
+        discountPercentage: tier.discountPercent || 0,
+      },
+    });
+    console.log(response);
 
- 
-
+    if (
+      response.status &&
+      response.data &&
+      Array.isArray(response.data.priceTier)
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        priceTiers: response.data.priceTier.map((tier) => ({
+          id: tier.id,
+          name: tier.name,
+          description: tier.description,
+          pricingRules: {
+            markupPercentage: tier.pricingRules?.markupPercentage || 0,
+            discountPercentage: tier.pricingRules?.discountPercentage || 0,
+          },
+          isActive: tier.isActive,
+          checked: false, // or preserve checked state if needed
+        })),
+      }));
+      setCreatePriceTier(false);
+    }
+  };
   return (
     <section
       className={`fixed inset-0 bg-black/20 backdrop-blur-sm flex ${"justify-end"} z-50 transition-opacity duration-300 ease-in-out`}
@@ -352,7 +395,6 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
           isOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
         }`}
       >
-        {/* Non-scrollable header */}
         <div className="shrink-0 px-5">
           <div className="flex items-center justify-between py-5">
             <div className="">
@@ -367,286 +409,350 @@ const CreateProductModals: React.FC<CreateProductModalsProps> = ({
               <X className="h-4 w-4 text-white" />
             </button>
           </div>
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTabForCreate(tab.id)}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                    activeTabForCreate === tab.id
+                      ? "border-green-500 text-green-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-5 space-y-4 pr-2 px-5">
-          <form className="flex flex-col gap-7" onSubmit={handleProductSave}>
-            <div className="flex flex-col gap-2.5">
-              <label
-                className="flex items-center gap-1.5"
-                htmlFor="productName"
+        {activeTabForCreate === "basic" && (
+          <>
+            <div className="flex-1 overflow-y-auto py-5 space-y-4 pr-2 px-5">
+              <form
+                className="flex flex-col gap-7"
+                onSubmit={handleProductSave}
               >
-                <span>Product Name</span>
-                <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="text"
-                name="productName"
-                id="productName"
-                value={formData.productName}
-                onChange={(e) =>
-                  handleInputChange("productName", e.target.value)
-                }
-                className="font-normal w-full px-5 py-2.5 rounded-[10px] bg-[#FAFAFC] border border-[#E6E6E6] outline-none"
-                placeholder="Enter Product Name"
-                required
-              />
-            </div>
-
-            <div className="flex flex-col gap-2.5">
-              <label
-                className="flex items-center gap-1.5"
-                htmlFor="productCategory"
-              >
-                <span>Product Category</span>
-                <span className="text-red-600">*</span>
-              </label>
-              <DropdownSelector
-                outletId={outletId}
-                madeFor={SystemDefaults.CATEGORY}
-                searchPlaceholder="Search Product Category"
-                items={categories}
-                placeholder={formData.category || "Select a category"}
-                onSelect={(item) => handleInputChange("category", item)}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2.5">
-              <label
-                className="flex items-center gap-1.5"
-                htmlFor="defaultSellingPrice"
-              >
-                <span>Set Default Selling Price</span>
-                <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="number"
-                name="sellingPrice"
-                value={formData.sellingPrice}
-                onChange={(e) =>
-                  handleInputChange("sellingPrice", e.target.value)
-                }
-                className="font-normal w-full px-5 py-2.5 rounded-[10px] bg-[#FAFAFC] border border-[#E6E6E6] outline-none"
-                placeholder="Enter Selling Price"
-                required
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between gap-4">
-                <label className="flex flex-col">
-                  <span>Price Tier</span>
-                  <span className="text-[#898989] text-[13px]">
-                    Activate price tiers for your selling price
-                  </span>
-                </label>
-                <Switch
-                  checked={formData.hasPriceTiers}
-                  onChange={(checked) =>
-                    handleInputChange("hasPriceTiers", checked)
-                  }
-                />
-              </div>
-
-              {formData.hasPriceTiers && (
-                <div className="flex flex-col gap-3.5 mt-4">
-                  <PricingTierSelector
-                    price={formData.sellingPrice}
-                    tiers={formData.priceTiers}
-                    onTiersChange={(tiers) =>
-                      handleInputChange("priceTiers", tiers)
-                    }
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2.5">
-              <label className="flex">Product Description</label>
-              <textarea
-                placeholder="Product description"
-                value={formData.description}
-                onChange={(e) =>
-                  handleInputChange("description", e.target.value)
-                }
-                className="font-normal w-full h-[122px] px-5 py-2.5 rounded-[10px] bg-[#FAFAFC] border border-[#E6E6E6] outline-none"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2.5">
-              <label
-                className="flex items-center gap-1.5"
-                htmlFor="preparationArea"
-              >
-                <span>Preparation Area</span>
-                <span className="text-red-600">*</span>
-              </label>
-              <DropdownSelector
-                outletId={outletId}
-                madeFor={SystemDefaults.PREPARATION_AREA}
-                searchPlaceholder="Search Preparation Area"
-                items={preparationArea}
-                placeholder={
-                  formData.preparationArea || "Select a preparation area"
-                }
-                onSelect={(item) => handleInputChange("preparationArea", item)}
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between gap-4">
-                <label className="flex flex-col">
-                  <span>Add Allergens</span>
-                  <span className="text-[#898989] text-[13px]">
-                    Does this product have allergens?
-                  </span>
-                </label>
-                <Switch
-                  checked={formData.hasAllergens}
-                  onChange={(checked) =>
-                    handleInputChange("hasAllergens", checked)
-                  }
-                />
-              </div>
-
-              {formData.hasAllergens && (
-                <AllergenSelector
-                  allergens={formData.allergens}
-                  onAllergensChange={(allergens) =>
-                    handleInputChange("allergens", allergens)
-                  }
-                />
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2.5">
-              <label className="flex items-center gap-1.5" htmlFor="leadTime">
-                <span>Lead Time</span>
-                <span className="text-red-600">*</span>
-              </label>
-              <LeadTimeInputs
-                hours={formData.leadTimeHours}
-                minutes={formData.leadTimeMinutes}
-                seconds={formData.leadTimeSeconds}
-                onTimeChange={(field, value) =>
-                  handleInputChange(field as keyof ProductFormData, value)
-                }
-              />
-            </div>
-
-            <div className="flex flex-col gap-2.5">
-              <label
-                className="flex items-center gap-1.5"
-                htmlFor="productWeight"
-              >
-                <span>Weight</span>
-                <span className="text-red-600">*</span>
-              </label>
-
-              <div className="relative" ref={dropdownRef}>
-                <div className="flex items-center relative w-full px-5 py-2.5 rounded-[10px] bg-[#FAFAFC] border border-[#E6E6E6]">
+                <div className="flex flex-col gap-2.5">
+                  <label
+                    className="flex items-center gap-1.5"
+                    htmlFor="productName"
+                  >
+                    <span>Product Name</span>
+                    <span className="text-red-600">*</span>
+                  </label>
                   <input
-                    type="number"
-                    name="weight"
-                    id="weight"
-                    value={formData.weight}
+                    type="text"
+                    name="productName"
+                    id="productName"
+                    value={formData.productName}
                     onChange={(e) =>
-                      handleInputChange("weight", e.target.value)
+                      handleInputChange("productName", e.target.value)
                     }
-                    placeholder="Enter Weight"
-                    className="font-normal outline-none bg-transparent flex-1"
+                    className="font-normal w-full px-5 py-2.5 rounded-[10px] bg-[#FAFAFC] border border-[#E6E6E6] outline-none"
+                    placeholder="Enter Product Name"
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={toggleDropdown}
-                    className="text-gray-600 flex items-center gap-1"
-                  >
-                    {formData.weightUnit}
-                    <svg
-                      className={`w-4 h-4 transition-transform ${
-                        isDropdownOpen ? "rotate-180" : ""
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </button>
                 </div>
-                {isDropdownOpen && (
-                  <div className="absolute flex flex-col top-full right-0 mt-1 bg-[#2C2C2C] rounded-lg shadow-lg z-10 min-w-[60px]">
-                    {units.map((unit) => (
+
+                <div className="flex flex-col gap-2.5">
+                  <label
+                    className="flex items-center gap-1.5"
+                    htmlFor="productCategory"
+                  >
+                    <span>Product Category</span>
+                    <span className="text-red-600">*</span>
+                  </label>
+                  <DropdownSelector
+                    outletId={outletId}
+                    madeFor={SystemDefaults.CATEGORY}
+                    searchPlaceholder="Search Product Category"
+                    items={categories}
+                    placeholder={formData.category || "Select a category"}
+                    onSelect={(item) => handleInputChange("category", item)}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label
+                    className="flex items-center gap-1.5"
+                    htmlFor="defaultSellingPrice"
+                  >
+                    <span>Set Default Selling Price</span>
+                    <span className="text-red-600">*</span>
+                  </label>
+                  <div className="font-normal flex items-center gap-2 w-full px-5 py-2.5 rounded-[10px] bg-[#FAFAFC] border border-[#E6E6E6] outline-none">
+                    <input
+                      type="text"
+                      name="sellingPrice"
+                      value={formData.sellingPrice}
+                      onChange={(e) => {
+                        const value = e.target.value;
+
+                        // Allow only digits and optionally one dot
+                        const numericValue = value.replace(/[^0-9.]/g, "");
+
+                        // Prevent multiple dots
+                        const sanitizedValue =
+                          numericValue.split(".").length > 2
+                            ? numericValue.slice(0, -1)
+                            : numericValue;
+
+                        handleInputChange("sellingPrice", sanitizedValue);
+                      }}
+                      className="outline-none bg-transparent flex-1"
+                      placeholder="Enter Selling Price"
+                      required
+                    />
+
+                    <span className="text-[#15BA5C] font-bold text-[15px]">
+                      {outletsData?.outlet?.currency}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-4">
+                    <label className="flex flex-col">
+                      <span>Price Tier</span>
+                      <span className="text-[#898989] text-[13px]">
+                        Activate price tiers for your selling price
+                      </span>
+                    </label>
+                    <Switch
+                      checked={formData.hasPriceTiers}
+                      onChange={(checked) =>
+                        handleInputChange("hasPriceTiers", checked)
+                      }
+                    />
+                  </div>
+
+                  {formData.hasPriceTiers && (
+                    <div className="flex flex-col gap-3.5 mt-4">
+                      <PricingTierSelector
+                        price={formData.sellingPrice}
+                        tiers={formData.priceTiers}
+                        onTiersChange={(tiers) =>
+                          handleInputChange("priceTiers", tiers)
+                        }
+                      />
+                    </div>
+                  )}
+                  {formData.hasPriceTiers && (
+                    <button
+                      onClick={() => setCreatePriceTier(true)}
+                      type="button"
+                      className="text-[#15BA5C] rounded-[10px] hover:bg-[#15BA5C] hover:text-white bg-[#FAFAFC] cursor-pointer text-[16px] py-2.5 mt-4 mb-5 border border-[#15BA5C] w-full text-center  font-bold"
+                    >
+                      Add Price Tier
+                    </button>
+                  )}
+                </div>
+                {createPriceTier && (
+                  <CreatePriceTier
+                    onSave={handleAddPriceTier}
+                    onClose={() => setCreatePriceTier(false)}
+                  />
+                )}
+
+                <div className="flex flex-col gap-2.5">
+                  <label className="flex">Product Description</label>
+                  <textarea
+                    placeholder="Product description"
+                    value={formData.description}
+                    onChange={(e) =>
+                      handleInputChange("description", e.target.value)
+                    }
+                    className="font-normal w-full h-[122px] px-5 py-2.5 rounded-[10px] bg-[#FAFAFC] border border-[#E6E6E6] outline-none"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label
+                    className="flex items-center gap-1.5"
+                    htmlFor="preparationArea"
+                  >
+                    <span>Preparation Area</span>
+                    <span className="text-red-600">*</span>
+                  </label>
+                  <DropdownSelector
+                    outletId={outletId}
+                    madeFor={SystemDefaults.PREPARATION_AREA}
+                    searchPlaceholder="Search Preparation Area"
+                    items={preparationArea}
+                    placeholder={
+                      formData.preparationArea || "Select a preparation area"
+                    }
+                    onSelect={(item) =>
+                      handleInputChange("preparationArea", item)
+                    }
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-4">
+                    <label className="flex flex-col">
+                      <span>Add Allergens</span>
+                      <span className="text-[#898989] text-[13px]">
+                        Does this product have allergens?
+                      </span>
+                    </label>
+                    <Switch
+                      checked={formData.hasAllergens}
+                      onChange={(checked) =>
+                        handleInputChange("hasAllergens", checked)
+                      }
+                    />
+                  </div>
+
+                  {formData.hasAllergens && (
+                    <AllergenSelector
+                      outletId={outletId}
+                      allergens={formData.allergens}
+                      onAllergensChange={(allergens) =>
+                        handleInputChange("allergens", allergens)
+                      }
+                    />
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label
+                    className="flex items-center gap-1.5"
+                    htmlFor="leadTime"
+                  >
+                    <span>Lead Time</span>
+                    <span className="text-red-600">*</span>
+                  </label>
+                  <LeadTimeInputs
+                    hours={formData.leadTimeHours}
+                    minutes={formData.leadTimeMinutes}
+                    seconds={formData.leadTimeSeconds}
+                    onTimeChange={(field, value) =>
+                      handleInputChange(field as keyof ProductFormData, value)
+                    }
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label
+                    className="flex items-center gap-1.5"
+                    htmlFor="productWeight"
+                  >
+                    <span>Weight</span>
+                    <span className="text-red-600">*</span>
+                  </label>
+
+                  <div className="relative" ref={dropdownRef}>
+                    <div className="flex items-center relative w-full px-5 py-2.5 rounded-[10px] bg-[#FAFAFC] border border-[#E6E6E6]">
+                      <input
+                        type="number"
+                        name="weight"
+                        id="weight"
+                        value={formData.weight}
+                        onChange={(e) =>
+                          handleInputChange("weight", e.target.value)
+                        }
+                        placeholder="Enter Weight"
+                        className="font-normal outline-none bg-transparent flex-1"
+                        required
+                      />
                       <button
-                        key={unit}
                         type="button"
-                        onClick={() => handleUnitSelect(unit)}
-                        className={`px-4 py-2 text-center hover:bg-gray-600 first:rounded-t-lg last:rounded-b-lg ${
-                          formData.weightUnit === unit
-                            ? "text-[#15BA5C]"
-                            : "text-white"
-                        }`}
+                        onClick={toggleDropdown}
+                        className="text-gray-600 flex items-center gap-1"
                       >
-                        {unit}
+                        {formData.weightUnit}
+                        <svg
+                          className={`w-4 h-4 transition-transform ${
+                            isDropdownOpen ? "rotate-180" : ""
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
                       </button>
-                    ))}
+                    </div>
+                    {isDropdownOpen && (
+                      <div className="absolute flex flex-col top-full right-0 mt-1 bg-[#2C2C2C] rounded-lg shadow-lg z-10 min-w-[60px]">
+                        {units.map((unit) => (
+                          <button
+                            key={unit}
+                            type="button"
+                            onClick={() => handleUnitSelect(unit)}
+                            className={`px-4 py-2 text-center hover:bg-gray-600 first:rounded-t-lg last:rounded-b-lg ${
+                              formData.weightUnit === unit
+                                ? "text-[#15BA5C]"
+                                : "text-white"
+                            }`}
+                          >
+                            {unit}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label
+                    className="flex items-center gap-1.5"
+                    htmlFor="packagingMethod"
+                  >
+                    <span>Packaging Method</span>
+                    <span className="text-red-600">*</span>
+                  </label>
+                  <DropdownSelector
+                    outletId={outletId}
+                    madeFor={SystemDefaults.PACKAGING_METHOD}
+                    searchPlaceholder="Search packaging method"
+                    items={packagingMethod}
+                    placeholder={
+                      formData.packagingMethod || "Select a packaging method"
+                    }
+                    onSelect={(item) =>
+                      handleInputChange("packagingMethod", item)
+                    }
+                  />
+                </div>
+
+                {formData.imageUrl ? (
+                  <Image
+                    height={140}
+                    width={140}
+                    alt="Logo"
+                    src={formData.imageUrl}
+                    className="h-[140px] w-[140px] "
+                  />
+                ) : (
+                  <div className="flex flex-col gap-2.5">
+                    <label className="flex">Upload an Image</label>
+                    <FileUploadComponent
+                      setImageUrl={(url) => handleInputChange("imageUrl", url)}
+                    />
                   </div>
                 )}
-              </div>
+                <div className="flex items-center gap-3.5">
+                  <button
+                    className="w-full bg-[#15BA5C] text-[#FFFFFF] hover:border-[#15BA5C] hover:border hover:bg-white hover:text-[#15BA5C] text-[14px] font-medium py-2.5 rounded-[10px]"
+                    type="submit"
+                  >
+                    Save Product
+                  </button>
+                </div>
+              </form>
             </div>
-
-            <div className="flex flex-col gap-2.5">
-              <label
-                className="flex items-center gap-1.5"
-                htmlFor="packagingMethod"
-              >
-                <span>Packaging Method</span>
-                <span className="text-red-600">*</span>
-              </label>
-              <DropdownSelector
-                outletId={outletId}
-                madeFor={SystemDefaults.PACKAGING_METHOD}
-                searchPlaceholder="Search packaging method"
-                items={packagingMethod}
-                placeholder={
-                  formData.packagingMethod || "Select a packaging method"
-                }
-                onSelect={(item) => handleInputChange("packagingMethod", item)}
-              />
-            </div>
-
-            {formData.imageUrl ? (
-              <Image
-                height={140}
-                width={140}
-                alt="Logo"
-                src={formData.imageUrl}
-                className="h-[140px] w-[140px] "
-              />
-            ) : (
-              <div className="flex flex-col gap-2.5">
-                <label className="flex">Upload an Image</label>
-                <FileUploadComponent
-                  setImageUrl={(url) => handleInputChange("imageUrl", url)}
-                />
-              </div>
-            )}
-            <div className="flex items-center gap-3.5">
-              <button
-                className="w-full bg-[#15BA5C] text-[#FFFFFF] hover:border-[#15BA5C] hover:border hover:bg-white hover:text-[#15BA5C] text-[14px] font-medium py-2.5 rounded-[10px]"
-                type="submit"
-              >
-                Save Product
-              </button>
-            </div>
-          </form>
-        </div>
+          </>
+        )}
       </section>
     </section>
   );
@@ -667,14 +773,16 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
   onTiersChange,
 }) => {
   console.log(tiers, "This is the tiers");
+  const outletData = useSelectedOutlet();
+  console.log(outletData, "This is the create product outlet data");
+  const currency = getCurrencySymbolByCountry(outletData?.outlet?.country);
 
+  console.log(currency, "This is the currency");
+
+  // In PricingTierSelector, update handleTierChange to allow multiple selections
   const handleTierChange = (id: number) => {
-    // Changed from string to number
-    const updatedTiers = tiers.map(
-      (tier) =>
-        tier.id === id
-          ? { ...tier, checked: !tier.checked }
-          : { ...tier, checked: false } // Only allow one selection
+    const updatedTiers = tiers.map((tier) =>
+      tier.id === id ? { ...tier, checked: !tier.checked } : tier
     );
     onTiersChange(updatedTiers);
   };
@@ -702,18 +810,24 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
                   <span>{tier.name}</span> -{" "}
                   {tier.pricingRules.markupPercentage > 0 && (
                     <span>
-                      Markup: {tier.pricingRules.markupPercentage}% - Value:
-                      {calculateTierPrice(price, {
-                        ...tier.pricingRules,
-                      })}
+                      Markup: {tier.pricingRules.markupPercentage}% - Value:{" "}
+                      <span className="text-[#15BA5C] font-bold">
+                        {currency}
+                        {calculateTierPrice(price, {
+                          ...tier.pricingRules,
+                        })}
+                      </span>
                     </span>
                   )}
                   {tier.pricingRules.discountPercentage > 0 && (
                     <span>
-                      Discount: {tier.pricingRules.discountPercentage}% - Value:
-                      {calculateTierPrice(price, {
-                        ...tier.pricingRules,
-                      })}
+                      Discount: {tier.pricingRules.discountPercentage}% - Value:{" "}
+                      <span className="text-[#15BA5C] font-bold">
+                        {currency}
+                        {calculateTierPrice(price, {
+                          ...tier.pricingRules,
+                        })}
+                      </span>
                     </span>
                   )}
                 </label>
@@ -763,17 +877,19 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
 interface AllergenSelectorProps {
   allergens: Allergen[];
   onAllergensChange: (allergens: Allergen[]) => void;
+  outletId: number;
 }
 
 const AllergenSelector: React.FC<AllergenSelectorProps> = ({
   allergens,
   onAllergensChange,
+  outletId,
 }) => {
   const [showForm, setShowForm] = useState(false);
   const [newAllergen, setNewAllergen] = useState("");
 
   const toggleAllergen = (id: string) => {
-    console.log(allergens, "This is our allergens")
+    console.log(allergens, "This is our allergens");
     const updatedAllergens = allergens.map((allergen) =>
       allergen.id === id
         ? { ...allergen, isSelected: !allergen.isSelected }
@@ -782,8 +898,15 @@ const AllergenSelector: React.FC<AllergenSelectorProps> = ({
     onAllergensChange(updatedAllergens);
   };
 
-  const handleAddAllergen = (e: React.FormEvent) => {
+  const handleAddAllergen = async (e: React.FormEvent) => {
     e.preventDefault();
+    const response = (await productManagementService.createSystemDefaults(
+      SystemDefaults.ALLERGENS,
+      newAllergen,
+      outletId as number
+    )) as ApiResponseType;
+    console.log(response, "This is the response for the created allergen");
+
     if (newAllergen.trim()) {
       const newId = Date.now().toString();
       const updatedAllergens = [
@@ -895,71 +1018,171 @@ const LeadTimeInputs: React.FC<LeadTimeInputsProps> = ({
   seconds,
   onTimeChange,
 }) => {
-  const validateNumber = (value: string, max: number) => {
-    if (value === "") return true;
-    if (!/^\d+$/.test(value)) return false;
-    const num = parseInt(value, 10);
-    return num >= 0 && num <= max;
-  };
+  const [openDropdown, setOpenDropdown] = useState<
+    null | "hours" | "minutes" | "seconds"
+  >(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (validateNumber(value, 23)) {
-      onTimeChange("leadTimeHours", value);
-    }
-  };
+  // Generate options
+  const hourOptions = Array.from({ length: 24 }, (_, i) => i);
+  const minuteSecondOptions = Array.from({ length: 60 }, (_, i) => i);
 
-  const handleMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (validateNumber(value, 59)) {
-      onTimeChange("leadTimeMinutes", value);
+  // Handle outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setOpenDropdown(null);
+      }
     }
-  };
+    if (openDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openDropdown]);
 
-  const handleSecondsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (validateNumber(value, 59)) {
-      onTimeChange("leadTimeSeconds", value);
-    }
+  // Helper to format value
+  const formatValue = (val: string | number) => {
+    if (val === "" || val === undefined) return null;
+    return val.toString().padStart(2, "0");
   };
 
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-4" ref={dropdownRef}>
+      {/* Hours */}
       <div className="bg-[#FAFAFC] border border-[#E6E6E6] rounded-[10px] flex py-2.5 relative flex-1">
-        <input
-          type="text"
-          name="hours"
-          value={hours}
-          onChange={handleHoursChange}
-          className="font-normal pl-5 pr-9 outline-none w-full"
-          placeholder="Hours"
-          maxLength={2}
+        <button
+          type="button"
+          className="font-normal pl-5 pr-2 outline-none w-full text-left bg-transparent"
+          onClick={() =>
+            setOpenDropdown(openDropdown === "hours" ? null : "hours")
+          }
+        >
+          {formatValue(hours) ? (
+            <span>{formatValue(hours)}</span>
+          ) : (
+            <span className="text-gray-400">Hours</span>
+          )}
+        </button>
+        <Clock3
+          className="h-[17px] absolute right-2 top-3.5 text-gray-500 cursor-pointer"
+          onClick={() =>
+            setOpenDropdown(openDropdown === "hours" ? null : "hours")
+          }
         />
-        <Clock3 className="h-[17px] absolute right-2 top-3.5 text-gray-500" />
+        {openDropdown === "hours" && (
+          <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto min-w-[70px]">
+            {hourOptions.map((h) => (
+              <button
+                key={h}
+                type="button"
+                className={`block w-full px-4 py-2 text-left hover:bg-green-50 ${
+                  parseInt(hours) === h
+                    ? "text-[#15BA5C] font-bold"
+                    : "text-gray-800"
+                }`}
+                onClick={() => {
+                  onTimeChange("leadTimeHours", h.toString());
+                  setOpenDropdown(null);
+                }}
+              >
+                {h.toString().padStart(2, "0")}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+      {/* Minutes */}
       <div className="bg-[#FAFAFC] border border-[#E6E6E6] rounded-[10px] flex py-2.5 relative flex-1">
-        <input
-          type="text"
-          name="minutes"
-          value={minutes}
-          onChange={handleMinutesChange}
-          className="font-normal pl-5 pr-9 outline-none w-full"
-          placeholder="Minutes"
-          maxLength={2}
+        <button
+          type="button"
+          className="font-normal pl-5 pr-2 outline-none w-full text-left bg-transparent"
+          onClick={() =>
+            setOpenDropdown(openDropdown === "minutes" ? null : "minutes")
+          }
+        >
+          {formatValue(minutes) ? (
+            <span>{formatValue(minutes)}</span>
+          ) : (
+            <span className="text-gray-400">Minutes</span>
+          )}
+        </button>
+        <Clock3
+          className="h-[17px] absolute right-2 top-3.5 text-gray-500 cursor-pointer"
+          onClick={() =>
+            setOpenDropdown(openDropdown === "minutes" ? null : "minutes")
+          }
         />
-        <Clock3 className="h-[17px] absolute right-2 top-3.5 text-gray-500" />
+        {openDropdown === "minutes" && (
+          <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto min-w-[70px]">
+            {minuteSecondOptions.map((m) => (
+              <button
+                key={m}
+                type="button"
+                className={`block w-full px-4 py-2 text-left hover:bg-green-50 ${
+                  parseInt(minutes) === m
+                    ? "text-[#15BA5C] font-bold"
+                    : "text-gray-800"
+                }`}
+                onClick={() => {
+                  onTimeChange("leadTimeMinutes", m.toString());
+                  setOpenDropdown(null);
+                }}
+              >
+                {m.toString().padStart(2, "0")}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+      {/* Seconds */}
       <div className="bg-[#FAFAFC] border border-[#E6E6E6] rounded-[10px] flex py-2.5 relative flex-1">
-        <input
-          type="text"
-          name="seconds"
-          value={seconds}
-          onChange={handleSecondsChange}
-          className="font-normal pl-5 pr-9 outline-none w-full"
-          placeholder="Seconds"
-          maxLength={2}
+        <button
+          type="button"
+          className="font-normal pl-5 pr-2 outline-none w-full text-left bg-transparent"
+          onClick={() =>
+            setOpenDropdown(openDropdown === "seconds" ? null : "seconds")
+          }
+        >
+          {formatValue(seconds) ? (
+            <span>{formatValue(seconds)}</span>
+          ) : (
+            <span className="text-gray-400">Seconds</span>
+          )}
+        </button>
+        <Clock3
+          className="h-[17px] absolute right-2 top-3.5 text-gray-500 cursor-pointer"
+          onClick={() =>
+            setOpenDropdown(openDropdown === "seconds" ? null : "seconds")
+          }
         />
-        <Clock3 className="h-[17px] absolute right-2 top-3.5 text-gray-500" />
+        {openDropdown === "seconds" && (
+          <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto min-w-[70px]">
+            {minuteSecondOptions.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`block w-full px-4 py-2 text-left hover:bg-green-50 ${
+                  parseInt(seconds) === s
+                    ? "text-[#15BA5C] font-bold"
+                    : "text-gray-800"
+                }`}
+                onClick={() => {
+                  onTimeChange("leadTimeSeconds", s.toString());
+                  setOpenDropdown(null);
+                }}
+              >
+                {s.toString().padStart(2, "0")}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

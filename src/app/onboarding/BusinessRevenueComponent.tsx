@@ -108,11 +108,7 @@ const BusinessRevenueComponent: React.FC<BusinessRevenueComponentProps> = ({
     setUploadedImageUrl("");
     setUploadedFile(null);
 
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/svg+xml",
-    ];
+    const allowedTypes = ["image/jpeg", "image/png", "image/svg+xml"];
 
     if (!allowedTypes.includes(file.type)) {
       setUploadError("Please select a valid file type (JPG, PNG, SVG)");

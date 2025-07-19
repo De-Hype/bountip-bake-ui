@@ -1,21 +1,21 @@
 import React, { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Modal } from "../ui/Modal";
 import { Check, Loader2 } from "lucide-react";
 import SettingFiles from "@/assets/icons/settings";
 import { Switch } from "../ui/Switch";
 import settingsService from "@/services/settingsService";
 import { OperatingHoursType } from "@/types/settingTypes";
-import { toast } from "sonner";
 import { ApiResponseType } from "@/types/httpTypes";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
-import { useBusinessStore } from "@/stores/useBusinessStore";
 import { TimeDropdownSplit } from "./TimeDropdownSplit";
 
 interface OperatingHoursModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
 
 interface DayHours {
@@ -28,12 +28,12 @@ interface DayHours {
 export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  onError,
 }) => {
   const [operatingHours, setOperatingHours] = useState<DayHours[]>([]);
   const [selectAll, setSelectAll] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const { fetchBusinessData } = useBusinessStore();
+  // Remove isSaving state
   const outletAccess = useSelectedOutlet();
   const business = useBusiness();
   const businessId = business?.id;
@@ -66,12 +66,13 @@ export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
     if (!isOpen) {
       setOperatingHours([]);
       setSelectAll(false);
-      setIsSaving(false); // Reset loading state when modal closes
+      // Reset loading state when modal closes
     }
   }, [isOpen]);
 
   const handleDayToggle = (dayIndex: number) => {
-    if (isSaving) return; // Prevent changes while saving
+    // Prevent changes while saving
+    if (updateHoursMutation.isPending) return;
 
     setOperatingHours((prev) =>
       prev.map((day, index) =>
@@ -85,7 +86,8 @@ export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
     field: "openTime" | "closeTime",
     value: string
   ) => {
-    if (isSaving) return; // Prevent changes while saving
+    // Prevent changes while saving
+    if (updateHoursMutation.isPending) return;
 
     setOperatingHours((prev) =>
       prev.map((day, index) =>
@@ -95,7 +97,8 @@ export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
   };
 
   const handleSelectAll = (isChecked: boolean) => {
-    if (isSaving) return; // Prevent changes while saving
+    // Prevent changes while saving
+    if (updateHoursMutation.isPending) return;
 
     setSelectAll(isChecked);
 
@@ -114,10 +117,31 @@ export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
     });
   };
 
-  const handleSubmit = async () => {
-    if (!businessId || !outletAccess?.outlet) return;
+  // Mutation for updating operating hours
+  const updateHoursMutation = useMutation({
+    mutationFn: (dto: Partial<OperatingHoursType>) =>
+      settingsService.updateOperatingHours(
+        String(outletAccess?.outlet.id),
+        dto as OperatingHoursType
+      ) as Promise<ApiResponseType>,
+    onSuccess: (result: ApiResponseType) => {
+      if (result.status) {
+        onClose();
+        onSuccess(
+          "Save successful",
+          "Your Operating hours has been saved successfully"
+        );
+      } else {
+        onError("Failed", "Failed to update operating hours");
+      }
+    },
+    onError: () => {
+      onError("Failed", "An error occurred while updating operating hours");
+    },
+  });
 
-    setIsSaving(true);
+  const handleSubmit = () => {
+    if (!businessId || !outletAccess?.outlet) return;
 
     const dto: Partial<OperatingHoursType> = {};
     operatingHours.forEach(({ day, enabled, openTime, closeTime }) => {
@@ -134,35 +158,11 @@ export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
       Object.keys(dto).every((day) => !!dto[day as keyof OperatingHoursType]);
 
     if (!isComplete) {
-      toast.error("Please complete all operating hours data");
-      setIsSaving(false);
+      onError("Failed", "Please complete all operating hours data");
       return;
     }
 
-    try {
-      const result = (await settingsService.updateOperatingHours(
-        String(outletAccess.outlet.id),
-        dto as OperatingHoursType
-      )) as ApiResponseType;
-
-      if (result.status) {
-        await fetchBusinessData();
-        onClose();
-        onSuccess(
-          "Save successful",
-          "Your Operating hours has been saved successfully"
-        );
-
-      } else {
-        toast.error("Failed to update operating hours");
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.log(error);
-      toast.error("An error occurred while updating operating hours");
-    } finally {
-      setIsSaving(false);
-    }
+    updateHoursMutation.mutate(dto);
   };
 
   // Helper component for loading spinner
@@ -227,7 +227,9 @@ export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
                       onChange={(value) =>
                         handleTimeChange(dayIndex, "openTime", value)
                       }
-                      disabled={!dayHours.enabled || isSaving}
+                      disabled={
+                        !dayHours.enabled || updateHoursMutation.isPending
+                      }
                     />
                   </div>
 
@@ -238,7 +240,9 @@ export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
                       onChange={(value) =>
                         handleTimeChange(dayIndex, "closeTime", value)
                       }
-                      disabled={!dayHours.enabled || isSaving}
+                      disabled={
+                        !dayHours.enabled || updateHoursMutation.isPending
+                      }
                     />
                   </div>
 
@@ -249,11 +253,11 @@ export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
                         className="accent-green-600"
                         checked={selectAll}
                         onChange={(e) => handleSelectAll(e.target.checked)}
-                        disabled={isSaving}
+                        disabled={updateHoursMutation.isPending}
                       />
                       <p
                         className={`text-[#1C1B20] text-sm ${
-                          isSaving ? "opacity-50" : ""
+                          updateHoursMutation.isPending ? "opacity-50" : ""
                         }`}
                       >
                         Apply to all
@@ -269,12 +273,20 @@ export const OperatingHoursModal: React.FC<OperatingHoursModalProps> = ({
         <div className="flex justify-end">
           <button
             onClick={handleSubmit}
-            disabled={isSaving}
+            disabled={updateHoursMutation.isPending}
             className="flex items-center justify-center gap-2 bg-[#15BA5C] w-full text-[#ffffff] py-3 rounded-[10px] font-medium text-base mt-5 disabled:opacity-50 disabled:cursor-not-allowed"
             type="button"
           >
-            {isSaving ? <LoadingSpinner /> : <Check className="text-[14px]" />}
-            <span>{isSaving ? "Saving..." : "Save Operating Hours"}</span>
+            {updateHoursMutation.isPending ? (
+              <LoadingSpinner />
+            ) : (
+              <Check className="text-[14px]" />
+            )}
+            <span>
+              {updateHoursMutation.isPending
+                ? "Saving..."
+                : "Save Operating Hours"}
+            </span>
           </button>
         </div>
       </div>

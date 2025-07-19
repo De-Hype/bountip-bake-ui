@@ -8,7 +8,6 @@ type GetUserResponse = {
   message?: string;
 };
 
-
 type UserStore = {
   user: UserType | null;
   loading: boolean;
@@ -24,7 +23,7 @@ export const useUserStore = create<UserStore>((set) => ({
     set({ loading: true, error: null });
 
     try {
-      const res = await authService.getUser() as GetUserResponse;
+      const res = (await authService.getUser()) as GetUserResponse;
 
       console.log(res, "This is the logged-in user");
 

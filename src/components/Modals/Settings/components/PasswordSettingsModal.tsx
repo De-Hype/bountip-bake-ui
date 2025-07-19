@@ -1,10 +1,10 @@
 import React, { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
 import { Eye, EyeOff } from "lucide-react";
 import SettingFiles from "@/assets/icons/settings";
 import settingsService from "@/services/settingsService";
-import { toast } from "sonner";
 import { COOKIE_NAMES, removeCookie } from "@/utils/cookiesUtils";
 import { useRouter } from "next/navigation";
 
@@ -12,6 +12,7 @@ interface PasswordSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
 type PasswordSettingsRespone = {
   status: boolean;
@@ -22,7 +23,8 @@ type PasswordSettingsRespone = {
 export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  onError,
 }) => {
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -30,6 +32,7 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
     confirmPassword: "",
   });
   const router = useRouter();
+  // Remove isLoading state
 
   const [showPasswords, setShowPasswords] = useState({
     current: false,
@@ -55,39 +58,24 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { currentPassword, newPassword, confirmPassword } = formData;
-    if (newPassword !== confirmPassword) return;
-    try {
-      const result = (await settingsService.updatePasswordSettings({
-        oldPassword: currentPassword,
-        newPassword: newPassword,
-      })) as PasswordSettingsRespone;
+  // Mutation for updating password
+  const updatePasswordMutation = useMutation({
+    mutationFn: (payload: { oldPassword: string; newPassword: string }) =>
+      settingsService.updatePasswordSettings(
+        payload
+      ) as Promise<PasswordSettingsRespone>,
+    onSuccess: (result: PasswordSettingsRespone) => {
       if (result.status) {
         onSuccess(
           "Save Successful!",
           "Your Password has been saved successfully"
         );
-        
         removeCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER);
         removeCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS);
         router.push("/auth?signin");
-        return;
+      } else {
+        onError("Failed", "Incorrect credentials - failed to update password");
       }
-      toast.error("Incorrect credentials - failed to update password", {
-        duration: 3000,
-        position: "top-right",
-        style: { backgroundColor: "#f87171", color: "#fff" },
-      });
-    } catch (error: unknown) {
-      toast.error("Failed to update password", {
-        duration: 3000,
-        position: "top-right",
-      });
-      console.error("Error updating password:", error);
-      return;
-    } finally {
       onClose();
       setFormData({
         currentPassword: "",
@@ -99,7 +87,59 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
         hasNumber: false,
         hasSpecial: false,
       });
+    },
+    onError: () => {
+      onError("Failed", "Failed to update password");
+      onClose();
+      setFormData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setRequirements({
+        minLength: false,
+        hasNumber: false,
+        hasSpecial: false,
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const { currentPassword, newPassword, confirmPassword } = formData;
+
+    if (
+      currentPassword === "" ||
+      newPassword === "" ||
+      confirmPassword === ""
+    ) {
+      onError("Failed", "All fields are required");
+      return;
     }
+    if (newPassword !== confirmPassword) {
+      onError("Failed", "Passwords do not match");
+      return;
+    }
+    // Password requirements check
+    if (newPassword.length < 8 || newPassword.length > 16) {
+      onError("Failed", "Password must be 8-16 characters long");
+      return;
+    }
+    if (!/\d/.test(newPassword)) {
+      onError("Failed", "Password must have at least one number");
+      return;
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+      onError(
+        "Failed",
+        "Password must have at least one special character (e.g., @,#,!,?)"
+      );
+      return;
+    }
+    updatePasswordMutation.mutate({
+      oldPassword: currentPassword,
+      newPassword: newPassword,
+    });
   };
 
   const togglePasswordVisibility = (field: keyof typeof showPasswords) => {
@@ -212,8 +252,12 @@ export const PasswordSettingsModal: React.FC<PasswordSettingsModalProps> = ({
             {showPasswords.confirm ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
-        <button className="w-full bg-[#15BA5C] text-white py-[9.8px] rounded-[9.8px] cursor-pointer  hover:bg-green-950 " type="button">
-          Update Password
+        <button
+          className="w-full bg-[#15BA5C] text-white py-[9.8px] rounded-[9.8px] cursor-pointer  hover:bg-green-950 "
+          type="submit"
+          disabled={updatePasswordMutation.isPending}
+        >
+          {updatePasswordMutation.isPending ? "Updating..." : "Update Password"}
         </button>
       </form>
     </Modal>

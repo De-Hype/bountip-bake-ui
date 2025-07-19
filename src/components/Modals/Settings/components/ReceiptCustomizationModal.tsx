@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Switch } from "../ui/Switch";
@@ -81,14 +82,11 @@ export const ReceiptCustomizationModal: React.FC<
     customMessage: "",
   });
   const [imageUrl, setImageUrl] = useState("");
-  const { selectedOutletId, loading } = useBusinessStore();
+  const { selectedOutletId } = useBusinessStore();
   const selectedOutlet = useSelectedOutlet();
 
-  const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+ 
 
   useEffect(() => {
     if (isOpen && selectedOutlet?.outlet.receiptSettings) {
@@ -133,28 +131,30 @@ export const ReceiptCustomizationModal: React.FC<
     }
   }, [isOpen, selectedOutlet]);
 
-  // Safe early return now that all hooks are declared
-  if (loading || !isClient) {
-    return null;
-  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const result = (await settingsService.updateReceiptSettings(
+  // Mutation for updating receipt settings
+  const updateReceiptMutation = useMutation({
+    mutationFn: () =>
+      settingsService.updateReceiptSettings(
         formData,
         selectedOutletId as number,
         imageUrl
-      )) as ApiResponseType;
+      ),
+    onSuccess: (result: ApiResponseType) => {
       if (result.status) {
         toast.success("Successfully updated receipt settings");
       }
-    } catch (error) {
-      console.log(error);
-    }
+      onClose();
+    },
+    onError: () => {
+      toast.error("Failed to update receipt settings");
+      onClose();
+    },
+  });
 
-    console.log(imageUrl);
-    onClose();
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateReceiptMutation.mutate();
   };
 
   return (
@@ -575,8 +575,8 @@ export const ReceiptCustomizationModal: React.FC<
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              Save Settings
+            <Button type="submit" className="w-full" disabled={updateReceiptMutation.isPending}>
+              {updateReceiptMutation.isPending ? "Saving..." : "Save Settings"}
             </Button>
           </form>
         </div>

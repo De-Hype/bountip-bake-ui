@@ -21,7 +21,7 @@ class ProductManagementService {
       | "weightScale"
       | "weight"
       | "leadTime"
-      | "packagingArea"
+      // | "packagingArea"
     >
   ) {
     return this.request.post(
@@ -41,7 +41,7 @@ class ProductManagementService {
         weightScale: data.weightScale,
         weight: data.weight,
         leadTime: data.leadTime,
-        packagingArea: data.packagingArea,
+        // packagingArea: data.packagingArea,
       },
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
@@ -79,6 +79,7 @@ class ProductManagementService {
   async deleteProduct(outletId: number, productId: number) {
     return this.request.delete(
       `/outlets/${outletId}/products/${productId}`,
+      null,
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }
@@ -100,7 +101,7 @@ class ProductManagementService {
       | "weightScale"
       | "weight"
       | "leadTime"
-      | "packagingArea"
+      // Removed "packagingArea" as it is not a key of Product
     >
   ) {
     return this.request.patch(
@@ -120,7 +121,7 @@ class ProductManagementService {
         weightScale: data.weightScale,
         weight: data.weight,
         leadTime: data.leadTime,
-        packagingArea: data.packagingArea,
+       // packagingArea: data.packagingArea,
       },
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
@@ -150,19 +151,39 @@ class ProductManagementService {
   }
 
   async fetchSystemDefaults(key: SystemDefaults, outletId: number | string) {
-    return  await this.request.get(
+    return await this.request.get(
       `/${outletId}/system-defaults/${key}`,
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }
 
-  async createSystemDefaults(key: SystemDefaults, item: string, outletId: number) {
+  async createSystemDefaults(
+    key: SystemDefaults,
+    item: string,
+    outletId: number
+  ) {
     return await this.request.post(
       `/${outletId}/system-defaults/${key}/data`,
       {
         item: {
           name: item,
-        }
+        },
+      },
+      COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
+    );
+  }
+
+  async deleteSystemDefaults(
+    key: SystemDefaults,
+    item: string,
+    outletId: number
+  ) {
+    return await this.request.delete(
+      `/${outletId}/system-defaults/${key}/data`,
+      {
+        item: {
+          name: item,
+        },
       },
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );

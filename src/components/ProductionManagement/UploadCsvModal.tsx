@@ -30,7 +30,7 @@ const UploadCsvModal: React.FC<UploadCsvModalProps> = ({
   onClose,
 }) => {
   const [imageUrl, setImageUrl] = useState("");
-  console.log(imageUrl)
+  console.log(imageUrl);
 
   return (
     <AnimatePresence>
@@ -210,7 +210,7 @@ const UploadCsvModal: React.FC<UploadCsvModalProps> = ({
                 </div>
               </div>
               <div className="my-2.5">
-                <StatusTable/>
+                <StatusTable />
               </div>
               <div className="flex items-center gap-2.5">
                 <button
@@ -219,7 +219,10 @@ const UploadCsvModal: React.FC<UploadCsvModalProps> = ({
                 >
                   Merge Duplicate Entries
                 </button>
-                <button className="text-[#15BA5C] border border-[#E6E6E6] py-2.5 rounded-[10px] flex-1/2 text-[15px]" type="button">
+                <button
+                  className="text-[#15BA5C] border border-[#E6E6E6] py-2.5 rounded-[10px] flex-1/2 text-[15px]"
+                  type="button"
+                >
                   Skip Duplicate
                 </button>
               </div>
@@ -233,10 +236,6 @@ const UploadCsvModal: React.FC<UploadCsvModalProps> = ({
 
 export default UploadCsvModal;
 
-
-
-
-
 interface TableRow {
   id: number;
   itemName: string;
@@ -245,57 +244,59 @@ interface TableRow {
   category: string;
   allergens: string;
   availability: string;
-  status: 'ok' | 'error';
+  status: "ok" | "error";
 }
 
 const StatusTable: React.FC = () => {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'ok' | 'error'>('all');
+  const [activeFilter, setActiveFilter] = useState<"all" | "ok" | "error">(
+    "all"
+  );
 
   const data: TableRow[] = [
     {
       id: 1,
-      itemName: 'Muffin',
-      description: 'Sweet, yummy Cake',
-      price: '£10',
-      category: 'Cake',
-      allergens: 'Fish, Milk',
-      availability: 'Yes',
-      status: 'ok'
+      itemName: "Muffin",
+      description: "Sweet, yummy Cake",
+      price: "£10",
+      category: "Cake",
+      allergens: "Fish, Milk",
+      availability: "Yes",
+      status: "ok",
     },
     {
       id: 2,
-      itemName: 'Muffin',
-      description: '3984uSneukk fo',
-      price: '£ws',
-      category: '34',
-      allergens: 'Fish, Milk',
-      availability: 'Yes',
-      status: 'error'
+      itemName: "Muffin",
+      description: "3984uSneukk fo",
+      price: "£ws",
+      category: "34",
+      allergens: "Fish, Milk",
+      availability: "Yes",
+      status: "error",
     },
     {
       id: 3,
-      itemName: 'Muffin',
-      description: 'uf0auf',
-      price: '£10',
-      category: 'Cake',
-      allergens: '49592',
-      availability: 'Yes',
-      status: 'error'
-    }
+      itemName: "Muffin",
+      description: "uf0auf",
+      price: "£10",
+      category: "Cake",
+      allergens: "49592",
+      availability: "Yes",
+      status: "error",
+    },
   ];
 
-  const filteredData = data.filter(row => {
-    if (activeFilter === 'all') return true;
+  const filteredData = data.filter((row) => {
+    if (activeFilter === "all") return true;
     return row.status === activeFilter;
   });
 
-  const getStatusCount = (status: 'all' | 'ok' | 'error') => {
-    if (status === 'all') return data.length;
-    return data.filter(row => row.status === status).length;
+  const getStatusCount = (status: "all" | "ok" | "error") => {
+    if (status === "all") return data.length;
+    return data.filter((row) => row.status === status).length;
   };
 
   const StatusButton: React.FC<{
-    status: 'all' | 'ok' | 'error';
+    status: "all" | "ok" | "error";
     label: string;
     count: number;
   }> = ({ status, label, count }) => (
@@ -303,8 +304,8 @@ const StatusTable: React.FC = () => {
       onClick={() => setActiveFilter(status)}
       className={`px-4 py-2 text-sm font-medium rounded-none border-b-2 transition-colors ${
         activeFilter === status
-          ? 'text-green-600 border-green-600 bg-green-50'
-          : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
+          ? "text-green-600 border-green-600 bg-green-50"
+          : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
       }`}
     >
       {label} ({count})
@@ -316,20 +317,16 @@ const StatusTable: React.FC = () => {
       {/* Filter Tabs */}
       <div className="border-b border-[#E6E6E6]">
         <div className="flex space-x-0">
-          <StatusButton 
-            status="all" 
-            label="All" 
-            count={getStatusCount('all')} 
+          <StatusButton
+            status="all"
+            label="All"
+            count={getStatusCount("all")}
           />
-          <StatusButton 
-            status="ok" 
-            label="Ok" 
-            count={getStatusCount('ok')} 
-          />
-          <StatusButton 
-            status="error" 
-            label="Error" 
-            count={getStatusCount('error')} 
+          <StatusButton status="ok" label="Ok" count={getStatusCount("ok")} />
+          <StatusButton
+            status="error"
+            label="Error"
+            count={getStatusCount("error")}
           />
         </div>
       </div>
@@ -372,28 +369,60 @@ const StatusTable: React.FC = () => {
                   {row.itemName}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <span className={row.status === 'error' ? 'text-red-600 underline' : 'text-gray-900'}>
+                  <span
+                    className={
+                      row.status === "error"
+                        ? "text-red-600 underline"
+                        : "text-gray-900"
+                    }
+                  >
                     {row.description}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <span className={row.status === 'error' ? 'text-red-600 underline' : 'text-gray-900'}>
+                  <span
+                    className={
+                      row.status === "error"
+                        ? "text-red-600 underline"
+                        : "text-gray-900"
+                    }
+                  >
                     {row.price}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <span className={row.status === 'error' ? 'text-red-600 underline' : 'text-gray-900'}>
+                  <span
+                    className={
+                      row.status === "error"
+                        ? "text-red-600 underline"
+                        : "text-gray-900"
+                    }
+                  >
                     {row.category}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <span className={row.status === 'error' ? 'text-red-600 underline' : 'text-gray-900'}>
+                  <span
+                    className={
+                      row.status === "error"
+                        ? "text-red-600 underline"
+                        : "text-gray-900"
+                    }
+                  >
                     {row.allergens}
                   </span>
-                  {row.status === 'ok' && (
+                  {row.status === "ok" && (
                     <span className="ml-2 inline-flex items-center justify-center w-5 h-5 bg-green-500 rounded-full">
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <svg
+                        className="w-3 h-3 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </span>
                   )}
@@ -409,4 +438,3 @@ const StatusTable: React.FC = () => {
     </div>
   );
 };
-

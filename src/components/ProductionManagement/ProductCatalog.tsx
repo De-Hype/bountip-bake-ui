@@ -43,7 +43,7 @@ const ProductCatalog: React.FC = () => {
   }, [outletId, clearProducts]);
 
   const handleProductClick = (product: Product) => {
-    console.log(product, "Not a random product")
+    console.log(product, "Not a random product");
     setProductClicked(true);
     setSelectedProduct(product);
   };
@@ -186,14 +186,16 @@ const ProductCatalog: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-1">
-                        {product.allergenList?.allergies?.slice(0, 2).map((allergen, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded"
-                          >
-                            {allergen}
-                          </span>
-                        ))}
+                        {product.allergenList?.allergies
+                          ?.slice(0, 2)
+                          .map((allergen, index) => (
+                            <span
+                              key={index}
+                              className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded"
+                            >
+                              {allergen}
+                            </span>
+                          ))}
                         {product.allergenList?.allergies &&
                           product.allergenList.allergies.length > 2 && (
                             <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">

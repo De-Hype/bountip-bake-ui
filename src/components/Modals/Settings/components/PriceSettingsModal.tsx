@@ -5,8 +5,10 @@ import Image from "next/image";
 import { Input } from "../ui/Input";
 import settingsService from "@/services/settingsService";
 import { useBusinessStore } from "@/stores/useBusinessStore";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { businessService } from "@/services/businessService";
+import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import { ApiResponseType } from "@/types/httpTypes";
-import { toast } from "sonner";
 
 interface PriceTier {
   id: number;
@@ -30,24 +32,38 @@ interface PriceTierFormRef {
   hasFormData: () => boolean;
 }
 
-
 interface PriceTierFormProps {
   onAdd: (tier: Omit<PriceTier, "id" | "isActive">) => void;
+  onError: (heading: string, description: string) => void;
 }
 
 interface PriceSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
 
 export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
-
+  onSuccess,
+  onError,
 }) => {
-  const { selectedOutletId, outlets, fetchBusinessData } = useBusinessStore();
+  const { selectedOutletId } = useBusinessStore();
+  const queryClient = useQueryClient();
+
+  // Fetch business data with react-query (cached)
+  const { data: businessData } = useQuery({
+    queryKey: ["userBusiness"],
+    queryFn: () => businessService.getUserBusiness(),
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+
+  // Use the selected outlet from the cached business data
+  const selectedOutlet = useSelectedOutlet();
+  const priceTiers = selectedOutlet?.outlet?.priceTier || [];
   const [tiers, setTiers] = useState<PriceTier[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState<{ [key: number]: boolean }>({});
@@ -57,20 +73,14 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
 
   // Initialize tiers only when modal opens and selectedOutletId exists
   React.useEffect(() => {
-    if (isOpen && selectedOutletId) {
-      const outlet = outlets.find((val) => val.outlet.id === selectedOutletId);
-      if (outlet && Array.isArray(outlet.outlet.priceTier)) {
-        console.log(outlet.outlet.priceTier, "Loaded tiers");
-        setTiers(
-          outlet.outlet.priceTier.map((tier) => ({ ...tier, isEditing: false }))
-        );
-      } else {
-        setTiers([]);
-      }
+    if (isOpen && priceTiers) {
+      setTiers(
+        priceTiers.map((tier: PriceTier) => ({ ...tier, isEditing: false }))
+      );
+    } else if (isOpen) {
+      setTiers([]);
     }
-  }, [isOpen, selectedOutletId, outlets]);
-
-  if (!selectedOutletId) return null;
+  }, [isOpen, priceTiers]);
 
   const addTier = (tier: Omit<PriceTier, "id" | "isActive">) => {
     const newTier: PriceTier = {
@@ -82,41 +92,35 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
     setTiers((prev) => [...prev, newTier]);
   };
 
-  const deleteTier = async (id: number) => {
-    const tierToDelete = tiers.find((t) => t.id === id);
-
-    // Set deleting state for this specific tier
-    setIsDeleting((prev) => ({ ...prev, [id]: true }));
-
-    try {
-      // If it's a new tier (not saved to backend), just remove from state
-      if (tierToDelete?.isNew) {
-        setTiers((prev) => prev.filter((t) => t.id !== id));
-        return;
-      }
-
-      // Otherwise, delete from backend
-      const result = (await settingsService.deletePriceTier({
+  const deleteTierMutation = useMutation({
+    mutationFn: (id: number) =>
+      settingsService.deletePriceTier({
         outletId: selectedOutletId,
         priceTierId: id,
-      })) as ApiResponseType;
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["userBusiness"]);
+      onSuccess(
+        "Delete Successful!",
+        "Your Price Tier has been Deleted Successfully"
+      );
+    },
+    onError: () => {
+      onError("Failed", "Failed to delete price tier");
+    },
+  });
 
-      if (result.status) {
-        setTiers((prev) => prev.filter((t) => t.id !== id));
-        onSuccess(
-          "Delete Successful!",
-          "Your Price Tier has been Deleted Successfully"
-        );
-        await fetchBusinessData();
-      } else {
-        toast.error("Failed to delete price tier");
-      }
-    } catch (error) {
-      console.error("Failed to delete tier", error);
-      toast.error("Failed to delete price tier");
-    } finally {
+  const deleteTier = (id: number) => {
+    const tierToDelete = tiers.find((t) => t.id === id);
+    setIsDeleting((prev) => ({ ...prev, [id]: true }));
+    if (tierToDelete?.isNew) {
+      setTiers((prev) => prev.filter((t) => t.id !== id));
       setIsDeleting((prev) => ({ ...prev, [id]: false }));
+      return;
     }
+    deleteTierMutation.mutate(id, {
+      onSettled: () => setIsDeleting((prev) => ({ ...prev, [id]: false })),
+    });
   };
 
   const toggleEdit = (id: number) => {
@@ -127,126 +131,99 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
     );
   };
 
-  const updateTier = async (id: number, updatedTier: Partial<PriceTier>) => {
-    const { description, name, pricingRules } = updatedTier;
-    const response = (await settingsService.updatePriceTier({
-      outletId: selectedOutletId,
-      tierId: id,
-      name,
-      description,
-      pricingRules: {
-        discountPercentage: pricingRules?.discountPercentage,
-        fixedDiscount: pricingRules?.fixedDiscount,
-        fixedMarkup: pricingRules?.fixedMarkup,
-        markupPercentage: pricingRules?.markupPercentage,
-      },
-    })) as ApiResponseType;
-    if (response.status) {
-      const tier = tiers.find((t) => t.id === id);
-      if (tier && !tier.isNew) {
-        saveTierToBackend({ ...tier, ...updatedTier });
-      }
-      setTiers((prev) =>
-        prev.map((tier) =>
-          tier.id === id ? { ...tier, ...updatedTier } : tier
-        )
+  const updateTierMutation = useMutation({
+    mutationFn: ({
+      id,
+      updatedTier,
+    }: {
+      id: number;
+      updatedTier: Partial<PriceTier>;
+    }) =>
+      settingsService.updatePriceTier({
+        outletId: selectedOutletId,
+        tierId: id,
+        name: updatedTier.name,
+        description: updatedTier.description,
+        pricingRules: updatedTier.pricingRules,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["userBusiness"]);
+      onSuccess(
+        "Update Successful!",
+        "Your Price Tier has been updated successfully"
       );
-      await fetchBusinessData();
-    }
+    },
+    onError: () => {
+      onError("Failed", "Failed to update price tier");
+    },
+  });
 
-    // If it's not a new tier, save to backend immediately
+  const updateTier = (id: number, updatedTier: Partial<PriceTier>) => {
+    updateTierMutation.mutate({ id, updatedTier });
+    setTiers((prev) =>
+      prev.map((tier) => (tier.id === id ? { ...tier, ...updatedTier } : tier))
+    );
   };
 
-  const saveTierToBackend = async (tier: PriceTier) => {
-    try {
-      if (tier.isNew) {
-        // Create new tier
-        const result = (await settingsService.addPriceTier({
-          outletId: selectedOutletId,
-          name: tier.name,
-          description: tier.description,
-          pricingRules: tier.pricingRules,
-          isActive: tier.isActive,
-        })) as ApiResponseType;
+  const saveTierMutation = useMutation({
+    mutationFn: (tier: PriceTier) =>
+      settingsService.addPriceTier({
+        outletId: selectedOutletId,
+        name: tier.name,
+        description: tier.description,
+        pricingRules: tier.pricingRules,
+        isActive: tier.isActive,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["userBusiness"]);
+      onSuccess("Save Successful!", "Save Successful!");
+    },
+    onError: () => {
+      onError("Failed", "Failed to save price tier");
+    },
+  });
 
-        if (result.status) {
-          // Update the tier in state to mark it as saved
-          setTiers((prev) =>
-            prev.map((t) => (t.id === tier.id ? { ...t, isNew: false } : t))
-          );
-          return true;
-        } else {
-          throw new Error("Failed to save tier");
-        }
-      }
-      return true;
-    } catch (error) {
-      console.error("Failed to save tier", error);
-      toast.error("Failed to save price tier");
-      return false;
+  const saveTierToBackend = (tier: PriceTier) => {
+    if (tier.isNew) {
+      saveTierMutation.mutate(tier);
+      setTiers((prev) =>
+        prev.map((t) => (t.id === tier.id ? { ...t, isNew: false } : t))
+      );
     }
   };
 
   const handleSaveAll = async () => {
     setIsSaving(true);
-    try {
-      const formRef = priceTierFormRef.current;
-      const hasFormData = formRef?.hasFormData();
-      const tiersToSave: PriceTier[] = [];
+    const formRef = priceTierFormRef.current;
+    const hasFormData = formRef?.hasFormData();
+    const tiersToSave: PriceTier[] = [];
 
-      // ✅ Step 1: Add pending tier from form
-      if (hasFormData) {
-        const pendingTier = formRef?.addPendingTier();
-        if (!pendingTier) {
-          setIsSaving(false);
-          return;
-        }
-        tiersToSave.push(pendingTier);
-      }
-
-      // ✅ Step 2: Add other `isNew` tiers from state
-      const newTiers = tiers.filter((tier) => tier.isNew);
-      tiersToSave.push(...newTiers);
-
-      if (tiersToSave.length === 0) {
-        toast.info("No new price tiers to save.");
+    // Step 1: Add pending tier from form
+    if (hasFormData) {
+      const pendingTier = formRef?.addPendingTier();
+      if (!pendingTier) {
+        setIsSaving(false);
         return;
       }
-
-      const results = await Promise.allSettled(
-        tiersToSave.map((tier) =>
-          settingsService.addPriceTier({
-            outletId: selectedOutletId,
-            name: tier.name,
-            description: tier.description,
-            pricingRules: tier.pricingRules,
-            isActive: tier.isActive,
-          })
-        )
-      );
-
-      const failed = results.filter((res) => res.status === "rejected");
-      const succeeded = results.filter((res) => res.status === "fulfilled");
-
-      if (failed.length > 0) {
-        toast.error(`${failed.length} tier(s) failed to save.`);
-      }
-
-      if (succeeded.length > 0) {
-        onSuccess("Save Successful!", "Save Successful!");
-        setTiers((prev) => prev.map((t) => ({ ...t, isNew: false })));
-        formRef?.resetForm();
-        await fetchBusinessData();
-      }
-    } catch (error) {
-      console.error("Failed to save tiers", error);
-      toast.error("An unexpected error occurred while saving price tiers.");
-    } finally {
-      setIsSaving(false);
+      tiersToSave.push(pendingTier);
     }
+
+    // Step 2: Add other `isNew` tiers from state
+    const newTiers = tiers.filter((tier) => tier.isNew);
+    tiersToSave.push(...newTiers);
+
+    if (tiersToSave.length === 0) {
+      onError("Failed", "No new price tiers to save.");
+      setIsSaving(false);
+      return;
+    }
+
+    await Promise.all(tiersToSave.map((tier) => saveTierToBackend(tier)));
+
+    setTiers((prev) => prev.map((t) => ({ ...t, isNew: false })));
+    formRef?.resetForm();
+    setIsSaving(false);
   };
-  
-  
 
   // Helper function to get display values for markup/discount
   const getDisplayValue = (tier: PriceTier) => {
@@ -294,6 +271,7 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
                     }}
                     onCancel={() => toggleEdit(tier.id)}
                     isLoading={isCurrentlyEditing}
+                    onError={onError}
                   />
                 ) : (
                   <>
@@ -365,7 +343,11 @@ export const PriceSettingsModal: React.FC<PriceSettingsModalProps> = ({
 
         <div>
           <h4 className="font-medium mb-4">Add New Price Tier</h4>
-          <PriceTierForm ref={priceTierFormRef} onAdd={addTier} />
+          <PriceTierForm
+            onError={onError}
+            ref={priceTierFormRef}
+            onAdd={addTier}
+          />
         </div>
 
         {/* Show save button if there are unsaved tiers */}
@@ -394,6 +376,7 @@ interface EditableTierFormProps {
   onSave: (tier: Partial<PriceTier>) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
+  onError: (heading: string, description: string) => void;
 }
 
 const EditableTierForm: React.FC<EditableTierFormProps> = ({
@@ -401,6 +384,7 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
   onSave,
   onCancel,
   isLoading = false,
+  onError,
 }) => {
   const [editedTier, setEditedTier] = useState({
     name: tier.name,
@@ -438,7 +422,7 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
 
   const handleSave = async () => {
     if (!editedTier.name || editedTier.name.trim() === "") {
-      toast.warning("Please enter a price tier name.");
+      onError("Failed", "Please enter a price tier name");
       return;
     }
 
@@ -589,7 +573,7 @@ const EditableTierForm: React.FC<EditableTierFormProps> = ({
 export const PriceTierForm = React.forwardRef<
   PriceTierFormRef,
   PriceTierFormProps
->(({ onAdd }, ref) => {
+>(({ onAdd, onError }, ref) => {
   const [tier, setTier] = useState({
     name: "",
     description: "",
@@ -686,7 +670,10 @@ export const PriceTierForm = React.forwardRef<
         resetForm();
         return newTier;
       }
-      toast.warning("Price tier must have either a markup or discount rule.");
+      onError(
+        "Failed",
+        "Price tier must have either a markup or discount rule."
+      );
       return null;
     },
 
@@ -696,12 +683,12 @@ export const PriceTierForm = React.forwardRef<
 
   const handleAdd = () => {
     if (!tier.name || tier.name.trim() === "") {
-      toast.warning("Please enter a price tier name.");
+      onError("Failed", "Please enter a price tier name");
       return;
     }
     const hasRule = markupEnabled || discountEnabled;
     if (!hasRule) {
-      toast.warning("Please select a pricing rule (markup or discount).");
+      onError("Failed", "Please select a pricing rule (markup or discount)");
       return;
     }
     addTierInternal();

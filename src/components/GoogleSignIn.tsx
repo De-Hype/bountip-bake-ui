@@ -10,8 +10,10 @@ import { auth } from "@/utils/firebase/firebaseConfig";
 import Image from "next/image";
 //import { useRef } from "react";
 import AssetsFiles from "@/assets";
-//import { ApiResponseType } from "@/types/httpTypes";
+import { ApiResponseType } from "@/types/httpTypes";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import authService from "@/services/authServices";
+import { toast } from "sonner";
 
 interface GoogleSignInProps {
   mode: "signup" | "signin";
@@ -40,20 +42,50 @@ const GoogleSignIn = ({ mode }: GoogleSignInProps) => {
 
 
 
+  // function googleSignIn() {
+  //   const provider = new GoogleAuthProvider();
+  //   signInWithPopup(auth, provider)
+  //     .then((result) => {
+  //       // User signed in
+  //       const user = result.user;
+        
+  //       console.log(JSON.stringify(user));
+
+  //     })
+  //     .catch((error) => {
+  //       console.error(error);
+  //     });
+  // }
+
+
   function googleSignIn() {
     const provider = new GoogleAuthProvider();
+    // Optional: Add custom parameters if needed
+    // provider.setCustomParameters({
+    //   prompt: ‘select_account’
+    // });
     signInWithPopup(auth, provider)
-      .then((result) => {
-        // User signed in
+      .then(async (result) => {
+        // User signed in successfully
         const user = result.user;
-        
-        console.log(JSON.stringify(user));
-
+        console.log(`Signed in user:`,user);
+        const idToken = await user.getIdToken();
+        const response = (await authService.googleLogin(
+          idToken
+        )) as ApiResponseType;
+            console.log(response, "This is our response");
+            if (response.status) {
+              toast.success("Google sign-in successful");
+              // router.push("/dashboard");
+              return;
+            }        console.log(idToken, "This the id token");
+        // Do something with the user info (e.g., redirect, update UI)
       })
       .catch((error) => {
-        console.error(error);
+        console.error(`Sign-in error:`, error);
       });
   }
+
 
 
   return (

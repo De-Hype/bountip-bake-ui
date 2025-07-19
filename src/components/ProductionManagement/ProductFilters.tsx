@@ -47,7 +47,9 @@ const ProductFilters = () => {
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <h2 className="text-sm font-medium text-gray-800">Price</h2>
-          <button onClick={resetPrice} className="text-green-600 text-sm">Reset</button>
+          <button onClick={resetPrice} className="text-green-600 text-sm">
+            Reset
+          </button>
         </div>
         <div className="relative h-10">
           <input
@@ -89,8 +91,15 @@ const ProductFilters = () => {
 
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <label htmlFor="category" className="text-sm font-medium text-gray-800">Category</label>
-          <button onClick={resetCategory} className="text-green-600 text-sm">Reset</button>
+          <label
+            htmlFor="category"
+            className="text-sm font-medium text-gray-800"
+          >
+            Category
+          </label>
+          <button onClick={resetCategory} className="text-green-600 text-sm">
+            Reset
+          </button>
         </div>
         <div className="relative">
           <select
@@ -110,8 +119,18 @@ const ProductFilters = () => {
 
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <label htmlFor="availability" className="text-sm font-medium text-gray-800">Availability</label>
-          <button onClick={resetAvailability} className="text-green-600 text-sm">Reset</button>
+          <label
+            htmlFor="availability"
+            className="text-sm font-medium text-gray-800"
+          >
+            Availability
+          </label>
+          <button
+            onClick={resetAvailability}
+            className="text-green-600 text-sm"
+          >
+            Reset
+          </button>
         </div>
         <div className="relative">
           <select

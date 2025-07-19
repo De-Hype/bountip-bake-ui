@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { productSans } from "./fonts/product-sans/product-sans";
-
-
+import ReactQueryProvider from "@/components/Providers/queryClientProvider";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -18,11 +17,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={productSans.variable}
-      >
-        <Toaster />
-        {children}
+      <body className={productSans.variable}>
+        <ReactQueryProvider>
+          <Toaster />
+          {children}
+        </ReactQueryProvider>
       </body>
     </html>
   );

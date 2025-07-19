@@ -9,7 +9,7 @@ import { Switch } from "../ui/Switch";
 import { Dropdown } from "../ui/Dropdown";
 import Image from "next/image";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
-import { useBusinessStore } from "@/stores/useBusinessStore";
+// import { useBusinessStore } from "@/stores/useBusinessStore";
 import LabelPreview from "./LabelPreview";
 
 interface InvoiceCustomizationModalProps {
@@ -80,7 +80,6 @@ export const InvoiceCustomizationModal: React.FC<
   });
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { selectedOutletId, loading } = useBusinessStore();
   const selectedOutlet = useSelectedOutlet();
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -201,7 +201,7 @@ function ForgotPassword({
   };
 
   return (
-    <form className="flex flex-col justify-between items-center w-1/2 h-[75vh]">
+    <form className="flex flex-col justify-between items-center w-3/4 h-[75vh]">
       <div className="flex flex-col items-center justify-center w-full flex-grow gap-4">
         <div className="bg-[#15BA5C] px-5 py-3 rounded-xl">
           <Fingerprint className="text-white" />

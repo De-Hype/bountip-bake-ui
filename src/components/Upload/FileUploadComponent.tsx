@@ -48,11 +48,11 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({
     try {
       console.log("Uploading file:", file);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response:any = await uploadService.uploadImage(
+      const response: any = await uploadService.uploadImage(
         file,
         COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
       );
-      console.log(response)
+      console.log(response);
       if (response?.status && response?.data?.url) {
         setImageUrl(response.data.url);
         console.log("Image uploaded successfully:", response.data.url);

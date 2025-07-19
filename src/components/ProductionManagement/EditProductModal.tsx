@@ -91,8 +91,8 @@ const EditProductModals: React.FC<EditProductModalsProps> = ({
   const outlet = useSelectedOutlet();
   const outletId = outlet?.outlet.id;
   console.log(outletId);
-const outletsData= useSelectedOutlet()
-console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
+  const outletsData = useSelectedOutlet();
+  console.log(outletsData?.outlet.priceTier, "This is the businessDATA");
 
   // Form data state
   const [formData, setFormData] = useState<ProductFormData>({
@@ -149,7 +149,6 @@ console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
       }));
     }
   }, [outletsData?.outlet.priceTier, selectedProduct?.priceTierId]);
-  
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
@@ -221,7 +220,7 @@ console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
           isActive: tier.isActive,
           checked: selectedProduct.priceTierId === tier.id, // Check if this tier is selected
         })) || [];
-        console.log(selectedProduct, 'This is the selected product')
+      console.log(selectedProduct, "This is the selected product");
 
       setFormData({
         productName: selectedProduct.name,
@@ -252,8 +251,6 @@ console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
     selectedProduct,
     outletsData?.outlet.priceTier,
   ]);
-  
-  
 
   if (!isOpen && !isVisible) return null;
 
@@ -369,7 +366,6 @@ console.log(outletsData?.outlet.priceTier, "This is the businessDATA")
       toast.error("An error occurred while saving the product");
     }
   };
-  
 
   const handleDeleteProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -862,7 +858,7 @@ export default EditProductModals;
 // Updated PricingTierSelector Component
 interface PricingTierSelectorProps {
   tiers: PricingTier[];
-  price:number,
+  price: number;
   onTiersChange: (tiers: PricingTier[]) => void;
 }
 
@@ -905,16 +901,16 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
                   <span>{tier.name}</span> -{" "}
                   {tier.pricingRules.markupPercentage > 0 && (
                     <span>
-                      Markup: {tier.pricingRules.markupPercentage}% - Value:  
-                       {calculateTierPrice(price, {
-                        ...tier.pricingRules
+                      Markup: {tier.pricingRules.markupPercentage}% - Value:
+                      {calculateTierPrice(price, {
+                        ...tier.pricingRules,
                       })}
                     </span>
                   )}
                   {tier.pricingRules.discountPercentage > 0 && (
                     <span>
-                      Discount: {tier.pricingRules.discountPercentage}% - Value:  
-                       {calculateTierPrice(price, {
+                      Discount: {tier.pricingRules.discountPercentage}% - Value:
+                      {calculateTierPrice(price, {
                         ...tier.pricingRules,
                       })}
                     </span>
@@ -961,7 +957,6 @@ const PricingTierSelector: React.FC<PricingTierSelectorProps> = ({
     </>
   );
 };
-
 
 // Updated AllergenSelector Component
 interface AllergenSelectorProps {

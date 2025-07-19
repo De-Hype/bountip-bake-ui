@@ -38,7 +38,7 @@ const Header = () => {
 
   const handleLogOut = () => {
     removeCookie(COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS);
-    removeCookie(COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD)
+    removeCookie(COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD);
     router.push("/auth?signin");
   };
 

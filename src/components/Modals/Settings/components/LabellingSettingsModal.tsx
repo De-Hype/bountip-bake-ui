@@ -1,6 +1,7 @@
-"use client"
+"use client";
 
 import React, { useState, useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Switch } from "../ui/Switch";
@@ -10,7 +11,6 @@ import { Dropdown } from "../ui/Dropdown";
 import settingsService from "@/services/settingsService";
 import { useBusinessStore } from "@/stores/useBusinessStore";
 import { ApiResponseType } from "@/types/httpTypes";
-import { toast } from "sonner";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import Image from "next/image";
 import LabelPreview from "./LabelPreview";
@@ -19,6 +19,7 @@ interface LabellingSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
 }
 
 const fontOptions = [
@@ -38,9 +39,10 @@ const paperSizeOptions = [
 export const LabellingSettingsModal: React.FC<LabellingSettingsModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  onError,
 }) => {
-  const { selectedOutletId, loading } = useBusinessStore();
+  const { selectedOutletId } = useBusinessStore();
   const selectedOutlet = useSelectedOutlet();
 
   const [isClient, setIsClient] = useState(false);
@@ -113,35 +115,35 @@ export const LabellingSettingsModal: React.FC<LabellingSettingsModalProps> = ({
     }
   }, [isOpen, selectedOutlet]);
 
-  // Safe early return now that all hooks are declared
-  if (loading || !isClient) {
-    return null;
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const result = (await settingsService.updateLabelSettings(
+  // Mutation for updating label settings (move above early return)
+  const updateLabelMutation = useMutation<ApiResponseType, unknown, void>({
+    mutationFn: () =>
+      settingsService.updateLabelSettings(
         formData,
         selectedOutletId as number,
         imageUrl
-      )) as ApiResponseType;
-
+      ) as Promise<ApiResponseType>,
+    onSuccess: (result) => {
       if (result.status) {
-
-        onSuccess(
-          "Save Successful!",
-          "Your Label has been saved successfully"
-        );
-        toast.success("Successfully created the labelling");
+        onSuccess("Save Successful!", "Your Label has been saved successfully");
         onClose();
       } else {
-        toast.error("Failed to update labelling settings");
+        onError("Failed", "Failed to update labelling settings");
       }
-    } catch (error) {
-      console.error("Error updating label settings:", error);
-      toast.error("An error occurred while updating settings");
-    }
+    },
+    onError: () => {
+      onError("Failed", "An error occurred while updating settings");
+    },
+  });
+
+  // Safe early return now that all hooks are declared
+  if (!isClient) {
+    return null;
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateLabelMutation.mutate();
   };
 
   const toggleLabelItem = (index: number) => {
@@ -331,15 +333,17 @@ export const LabellingSettingsModal: React.FC<LabellingSettingsModalProps> = ({
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              Save Settings
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={updateLabelMutation.isPending}
+            >
+              {updateLabelMutation.isPending ? "Saving..." : "Save Settings"}
             </Button>
           </form>
         </div>
-          <LabelPreview type="label" formData={formData} imageUrl={imageUrl} />{" "}
+        <LabelPreview type="label" formData={formData} imageUrl={imageUrl} />{" "}
       </section>
     </Modal>
   );
 };
-
-

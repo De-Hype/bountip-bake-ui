@@ -275,7 +275,7 @@ export const useProductManagementStore = create<IProductManagementStore>(
     },
 
     // Categories
-    allCategories:[],
+    allCategories: [],
     categories: [],
     setCategories: (categories) => set({ categories }),
 

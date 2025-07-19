@@ -1,16 +1,19 @@
 "use client";
-import { useUserStore } from "@/stores/useUserStore"
-import { useEffect } from "react"
+import { useQuery } from "@tanstack/react-query";
+import authService from "@/services/authServices";
 
 const DashboardClient = () => {
-    const {fetchUserData}= useUserStore()
-    useEffect(() => {
-      fetchUserData()
-    }, [fetchUserData])
-    
-  return (
-    <div>DashboardClient</div>
-  )
-}
+  const { isLoading, isError } = useQuery({
+    queryKey: ["userData"],
+    queryFn: () => authService.getUser(),
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
 
-export default DashboardClient
+  if (isLoading) return <div>Loading user data...</div>;
+  if (isError) return <div>Error loading user data.</div>;
+
+  return <div>DashboardClient</div>;
+};
+
+export default DashboardClient;

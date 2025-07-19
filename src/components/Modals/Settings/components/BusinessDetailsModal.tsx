@@ -1,5 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
+import { useMutation } from "@tanstack/react-query";
+import type { HttpError } from "@/services/httpService";
 import {
   Country,
   State,
@@ -23,9 +25,7 @@ import uploadService from "@/services/uploadService";
 import settingsService from "@/services/settingsService";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
-import { useBusinessStore } from "@/stores/useBusinessStore";
 import { Business } from "@/types/business";
-import { toast } from "sonner";
 import { getPhoneCountries, PhoneCountry } from "@/utils/getPhoneCountries";
 
 interface BusinessDetailsModalProps {
@@ -33,6 +33,7 @@ interface BusinessDetailsModalProps {
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
   outletId: string | number | null;
+  onError: (heading: string, description: string) => void;
 }
 
 const defaultBusinessTypes = ["Bakery", "Restaurant", "Bar"];
@@ -43,6 +44,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   onClose,
   outletId,
   onSuccess,
+  onError,
 }) => {
   const outlet = useSelectedOutlet();
   const business = useBusiness() as Business;
@@ -57,8 +59,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     businessType: "",
     postalCode: "",
   });
-  const { fetchBusinessData } = useBusinessStore();
-  console.log(outlet, "This is the outlet stuff ")
+  console.log(outlet, "This is the outlet stuff ");
 
   const [newBusinessType, setNewBusinessType] = useState("");
   const [businessTypes, setBusinessTypes] = useState(defaultBusinessTypes);
@@ -66,7 +67,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isBusinessTypeOpen, setIsBusinessTypeOpen] = useState(false);
   const [phoneError, setPhoneError] = useState<string>("");
-  const [loading, setLoading] = useState(false);
   // Country dropdown states
   const [selectedCountry, setSelectedCountry] = useState<ICountry | null>(null);
   const [isCountryOpen, setIsCountryOpen] = useState(false);
@@ -85,12 +85,9 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
   const [availableCities, setAvailableCities] = useState<ICity[]>([]);
 
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
-  const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
-  const [uploadError, setUploadError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImageDeleted, setIsImageDeleted] = useState(false);
-
 
   // Filter countries based on search term
   const filteredCountries = countries.filter((country) =>
@@ -209,8 +206,8 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     if (outlet?.outlet.logoUrl && !uploadedImageUrl) {
       setUploadedImageUrl(outlet.outlet.logoUrl);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ uploadedImageUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadedImageUrl]);
 
   const handleBusinessTypeSelect = (type: string) => {
     setBusinessType(type);
@@ -254,72 +251,39 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     return currency || "Currency not found";
   };
 
-  // Dummy form submission function
-  const handleSubmit = async (e: React.FormEvent) => {
-    setLoading(true);
-    e.preventDefault();
-    console.log(phoneError);
-
-    const { country } = details;
-
-    const finalDetails = {
-      ...details,
-      businessType,
-      revenueRange: "10-500",
-      currency: getCurrencyByCountryName(country),
-      logoUrl: uploadedImageUrl,
-      // Option 1: Send country code separately
-      phoneCountryCode: selectedPhoneCountry?.dialCode || "",
-      phoneCountryIso: selectedPhoneCountry?.isoCode || "",
-
-      // Option 2: Send full phone number with country code
-      phoneNumber: selectedPhoneCountry?.dialCode
-        ? `${selectedPhoneCountry.dialCode}${details.phone}`
-        : details.phone,
-    };
-
-    console.log(finalDetails);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response: any = await settingsService.updateBusinessDetails(
-      finalDetails,
-      outletId as number
-    );
-
-    if (response.status) {
-      onSuccess(
-        "Update Successful!",
-        "Your Details have been updated successfully"
-      );
-      setLoading(false);
-      setDetails({
-        name: "",
-        email: "",
-        phone: "",
-        country: "",
-        state: "",
-        city: "",
-        address: "",
-        postalCode: "",
-        businessType: "",
-      });
-      setBusinessType("");
-      setIsImageDeleted(false); // Reset deleted state
-      setUploadedImageUrl("");
-      setSelectedCountry(null);
-      setSelectedState(null);
-      setSelectedCity(null);
-      setSelectedPhoneCountry(null); // Reset phone country as well
-      await fetchBusinessData();
+  // Mutation for business details update
+  const updateBusinessMutation = useMutation({
+    mutationFn: (details: BusinessDetailsType) =>
+      settingsService.updateBusinessDetails(details, outletId),
+    onSuccess: () => {
+      onSuccess("Save Successful!", "Your business details have been updated.");
+      // fetchBusinessData();
       onClose();
-    }
-    if (response.error) {
-      const combinedMessage = response.message.join(". ") + ".";
-      setLoading(false);
-      toast.error(combinedMessage);
-    }
+    },
+    onError: () => {
+      onError("Failed", "Failed to update business details.");
+    },
+  });
+
+  // Mutation for logo upload
+  type UploadResult = { url: string; phash: string };
+  const uploadMutation = useMutation<UploadResult | HttpError, unknown, File>({
+    mutationFn: (file: File) =>
+      uploadService.uploadImage(file, COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS),
+    onSuccess: (response) => {
+      if (!("error" in response)) {
+        setUploadedImageUrl(response.url);
+      }
+    },
+    onError: () => {
+      setUploadedImageUrl("");
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateBusinessMutation.mutate(details);
   };
-  
 
   const handleChange = (field: keyof BusinessDetailsType, value: string) => {
     setDetails((prev) => ({ ...prev, [field]: value }));
@@ -339,52 +303,21 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     }
   };
 
-  const uploadImage = async (file: File) => {
-    setIsUploading(true);
-    setUploadError("");
-
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response: any = await uploadService.uploadImage(
-        file,
-        COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
-      );
-      console.log(response);
-
-      if (response.status) {
-        setUploadedImageUrl(response.data.url);
-        console.log("Image uploaded successfully:", response.data.url);
-      } else {
-        throw new Error("No URL returned from upload service");
-      }
-    } catch (error) {
-      console.error("Upload failed:", error);
-      setUploadError("Failed to upload image. Please try again.");
-      setUploadedImageUrl("");
-    } finally {
-      setIsUploading(false);
-    }
+  const uploadImage = (file: File) => {
+    uploadMutation.mutate(file);
   };
 
-  const handleFileSelect = async (file: File) => {
-    setUploadError("");
+  const handleFileSelect = (file: File) => {
     setUploadedImageUrl("");
-    setIsImageDeleted(false);
-
-    const allowedTypes = ["image/jpeg", "image/png", "image/svg+xml"];
-
-    if (!allowedTypes.includes(file.type)) {
-      setUploadError("Please select a valid image file (JPG, PNG, SVG)");
+    if (!file.type.startsWith("image/")) {
+      // Optionally show a toast or error UI
       return;
     }
-
-    // Check file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError("File size must be less than 5MB");
+    if (file.size > 10 * 1024 * 1024) {
+      // Optionally show a toast or error UI
       return;
     }
-
-    await uploadImage(file);
+    uploadImage(file);
   };
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -419,15 +352,10 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     }
   };
 
-  const handleUploadClick = () => {
-    if (!isUploading) {
-      setUploadError("");
+  const handleClick = () => {
+    if (!uploadMutation.isPending) {
       fileInputRef.current?.click();
     }
-  };
-
-  const dismissError = () => {
-    setUploadError("");
   };
 
   // Function to handle image deletion - to be implemented later
@@ -436,7 +364,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
     setIsImageDeleted(true); // Mark image as deleted
 
     // Clear any upload errors
-    setUploadError("");
+    // setUploadError(""); // No longer needed
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -444,9 +372,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
 
     console.log("Image deleted successfully");
   };
-  
-
-  
 
   const [phoneCountries, setPhoneCountries] = useState<PhoneCountry[]>([]);
   const [selectedPhoneCountry, setSelectedPhoneCountry] =
@@ -456,9 +381,12 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
 
   const validatePhoneNumber = (phone: string, countryCode: string): boolean => {
     if (!phone || !countryCode) return false;
-    
+
     try {
-      const phoneNumber = parsePhoneNumberFromString(phone, countryCode as import("libphonenumber-js").CountryCode);
+      const phoneNumber = parsePhoneNumberFromString(
+        phone,
+        countryCode as import("libphonenumber-js").CountryCode
+      );
       return phoneNumber ? phoneNumber.isValid() : false;
     } catch {
       return false;
@@ -502,9 +430,6 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
         .includes(phoneCountrySearchTerm.toLowerCase()) ||
       country.dialCode.includes(phoneCountrySearchTerm)
   );
-  
-
-  
 
   return (
     <Modal
@@ -1063,14 +988,16 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
               className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
                 isDragOver
                   ? "border-[#15BA5C] bg-green-50"
-                  : uploadError
+                  : uploadMutation.isError
                   ? "border-red-300 hover:border-red-400 hover:bg-red-50"
                   : "border-gray-300 hover:border-[#15BA5C] hover:bg-gray-50"
-              } ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+              } ${
+                uploadMutation.isPending ? "opacity-50 cursor-not-allowed" : ""
+              }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              onClick={handleUploadClick}
+              onClick={handleClick}
             >
               <input
                 ref={fileInputRef}
@@ -1078,11 +1005,11 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
                 accept=".jpg,.jpeg,.png,.svg"
                 onChange={handleFileInputChange}
                 className="hidden"
-                disabled={isUploading}
+                disabled={uploadMutation.isPending}
               />
 
               <div className="flex flex-col items-center">
-                {isUploading ? (
+                {uploadMutation.isPending ? (
                   <>
                     <Loader2 className="w-12 h-12 text-[#15BA5C] mb-4 animate-spin" />
                     <p className="text-[#15BA5C] font-medium mb-1">
@@ -1092,7 +1019,7 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
                       Please wait while we upload your logo
                     </p>
                   </>
-                ) : uploadError ? (
+                ) : uploadMutation.isError ? (
                   <>
                     <Upload className="w-12 h-12 text-red-400 mb-4" />
                     <div className="text-center">
@@ -1126,12 +1053,16 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
           )}
 
           {/* Error Message */}
-          {uploadError && (
+          {uploadMutation.isError && (
             <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md relative">
               <div className="flex items-start justify-between">
-                <p className="text-sm text-red-600 flex-1">{uploadError}</p>
+                <p className="text-sm text-red-600 flex-1">
+                  {uploadMutation.error instanceof Error
+                    ? uploadMutation.error.message
+                    : "Failed to upload image. Please try again."}
+                </p>
                 <button
-                  onClick={dismissError}
+                  onClick={() => uploadMutation.reset()}
                   className="ml-2 text-red-400 hover:text-red-600 transition-colors flex-shrink-0"
                   aria-label="Dismiss error"
                 >
@@ -1144,17 +1075,20 @@ export const BusinessDetailsModal: React.FC<BusinessDetailsModalProps> = ({
 
         <div className="flex flex-col mt-6">
           <button
-            disabled={loading}
+            onClick={handleSubmit}
             className={`w-full py-2.5 font-medium rounded-[10px] transition-colors flex items-center justify-center gap-2
         ${
-          loading
+          updateBusinessMutation.isPending
             ? "bg-[#A1A1A1] cursor-not-allowed"
             : "bg-[#15BA5C] hover:bg-[#13A652] text-white"
         }`}
             type="submit"
+            disabled={updateBusinessMutation.isPending}
           >
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Loading..." : "Save Details"}
+            {updateBusinessMutation.isPending && (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            )}
+            {updateBusinessMutation.isPending ? "Loading..." : "Save Details"}
           </button>
         </div>
       </form>

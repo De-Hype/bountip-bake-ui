@@ -1,5 +1,3 @@
-
-
 "use client";
 import { useEffect, useState } from "react";
 import { ChevronDown, Plus, X, Check, Loader2 } from "lucide-react";
@@ -30,9 +28,7 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
   const cookieData = getCookie<{ selectedOutlet: OutletAccess }>(
     COOKIE_NAMES.BOUNTIP_LOCATION_ONBOARD
   );
-  const registeredCookieData = getCookie(
-    COOKIE_NAMES.BOUNTIP_REGISTERED_USERS
-  );
+  const registeredCookieData = getCookie(COOKIE_NAMES.BOUNTIP_REGISTERED_USERS);
   const selectedOutlet = cookieData?.selectedOutlet;
   const router = useRouter();
   const [businessType, setBusinessType] = useState("");
@@ -134,50 +130,50 @@ const BusinessInfo = ({ onNext }: BusinessInfoProps) => {
     let CookieName;
     setIsSubmitting(true);
     console.log(selectedOutlet);
-    if (registeredCookieData){
+    if (registeredCookieData) {
       CookieName = COOKIE_NAMES.BOUNTIP_REGISTERED_USERS;
-    }else if(selectedOutlet){
+    } else if (selectedOutlet) {
       CookieName = COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS;
-    } else{
+    } else {
       CookieName = COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS;
     }
-    console.log(CookieName)
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const response: any = await businessService.onboardBusiness(
-          {
-            businessId: selectedOutlet
-              ? selectedOutlet.outlet.businessId
-              : businessId,
-            outletId: selectedOutlet ? selectedOutlet.outlet.id : outletId,
-            country: selectedCountry.name,
-            logoUrl: uploadedImageUrl,
-            address: businessAddress || selectedCountry.name,
-            businessType,
-            currency: selectedCurrency.code,
-            revenueRange: revenueRange,
-          },
+    console.log(CookieName);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response: any = await businessService.onboardBusiness(
+        {
+          businessId: selectedOutlet
+            ? selectedOutlet.outlet.businessId
+            : businessId,
+          outletId: selectedOutlet ? selectedOutlet.outlet.id : outletId,
+          country: selectedCountry.name,
+          logoUrl: uploadedImageUrl,
+          address: businessAddress || selectedCountry.name,
+          businessType,
+          currency: selectedCurrency.code,
+          revenueRange: revenueRange,
+        },
 
-          CookieName
-        );
+        CookieName
+      );
 
-        if (response.status) {
-          toast.success("Business information submitted successfully!", {
-            duration: 4000,
-            position: "bottom-right",
-          });
-          if (!selectedOutlet) {
-            onNext();
-          } else {
-            router.push("/settings");
-          }
+      if (response.status) {
+        toast.success("Business information submitted successfully!", {
+          duration: 4000,
+          position: "bottom-right",
+        });
+        if (!selectedOutlet) {
+          onNext();
+        } else {
+          router.push("/settings");
         }
-      } catch (error) {
-        console.error(error);
-        alert("An error occurred while submitting your business information.");
-      } finally {
-        setIsSubmitting(false);
       }
+    } catch (error) {
+      console.error(error);
+      alert("An error occurred while submitting your business information.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

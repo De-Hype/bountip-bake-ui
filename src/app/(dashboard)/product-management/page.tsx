@@ -10,6 +10,9 @@ import ProductFilters from "@/components/ProductionManagement/ProductFilters";
 import UploadCsvModal from "@/components/ProductionManagement/UploadCsvModal";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import { useProductManagementStore } from "@/stores/useProductManagementStore";
+import { useQuery } from "@tanstack/react-query";
+import productManagementService from "@/services/productManagementService";
+import { SystemDefaults } from "@/types/systemDefaults";
 import {
   Clock3,
   CloudUpload,
@@ -36,30 +39,17 @@ const ProductionManagement = () => {
     useState<boolean>(false);
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
-  const {
-    productClicked,
-    fetchProducts,
-    fetchCategory,
-    fetchPreparationArea,
-    fetchPackagingMethod,
-  } = useProductManagementStore();
+  const { productClicked } = useProductManagementStore();
 
   const selectedOutlet = useSelectedOutlet();
   const outletId = selectedOutlet?.outlet.id;
 
-  // Memoized search handler
-  const handleSearchProduct = useCallback(async () => {
-    if (!outletId) return;
-
+  // Refetch products on search by changing query key
+  const handleSearchProduct = useCallback(() => {
     setIsSearching(true);
-    try {
-      await fetchProducts(outletId, undefined, undefined, searchText);
-    } catch (error) {
-      console.error("Error searching products:", error);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [outletId, searchText, fetchProducts]);
+    // No need to manually fetch, react-query will refetch due to queryKey change
+    setTimeout(() => setIsSearching(false), 500); // Simulate loading
+  }, []);
 
   // Handle search on Enter key press
   const handleSearchKeyPress = useCallback(
@@ -71,31 +61,66 @@ const ProductionManagement = () => {
     [handleSearchProduct]
   );
 
-  // Fetch initial data
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      if (!outletId) return;
+  // Fetch products with react-query
+  const currentPage = 1; // Replace with state if pagination is needed
+  const {
+    data: productsData,
+    isLoading: isProductsLoading,
+    isError: isProductsError,
+    error: productsError,
+  } = useQuery({
+    queryKey: ["products", outletId, currentPage, searchText],
+    queryFn: () =>
+      outletId
+        ? productManagementService.fetchProducts(outletId, {
+            page: currentPage,
+            search: searchText,
+          })
+        : Promise.resolve({
+            status: false,
+            data: { data: [], meta: { totalPages: 1, total: 0 } },
+          }),
+    enabled: !!outletId,
+  });
 
-      try {
-        await Promise.all([
-          fetchCategory(outletId),
-          fetchPreparationArea(outletId),
-          fetchPackagingMethod(outletId),
-          fetchProducts(outletId),
-        ]);
-      } catch (error) {
-        console.error("Error fetching initial data:", error);
-      }
-    };
+  // Fetch categories
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories", outletId],
+    queryFn: () =>
+      outletId
+        ? productManagementService.fetchSystemDefaults(
+            SystemDefaults.CATEGORY,
+            outletId
+          )
+        : Promise.resolve({ status: false, data: { data: [] } }),
+    enabled: !!outletId,
+  });
 
-    fetchInitialData();
-  }, [
-    outletId,
-    fetchCategory,
-    fetchPreparationArea,
-    fetchPackagingMethod,
-    fetchProducts,
-  ]);
+  // Fetch preparation areas
+  const { data: prepAreaData } = useQuery({
+    queryKey: ["preparationArea", outletId],
+    queryFn: () =>
+      outletId
+        ? productManagementService.fetchSystemDefaults(
+            SystemDefaults.PREPARATION_AREA,
+            outletId
+          )
+        : Promise.resolve({ status: false, data: { data: [] } }),
+    enabled: !!outletId,
+  });
+
+  // Fetch packaging methods
+  const { data: packagingData } = useQuery({
+    queryKey: ["packagingMethod", outletId],
+    queryFn: () =>
+      outletId
+        ? productManagementService.fetchSystemDefaults(
+            SystemDefaults.PACKAGING_METHOD,
+            outletId
+          )
+        : Promise.resolve({ status: false, data: { data: [] } }),
+    enabled: !!outletId,
+  });
 
   // Close dropdowns when clicking outside
   useEffect(() => {

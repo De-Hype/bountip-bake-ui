@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronDown, Plus, Search } from "lucide-react";
+import { ChevronDown, Plus, Search, Trash, Trash2 } from "lucide-react";
 import productManagementService from "@/services/productManagementService";
 import { SystemDefaults } from "@/types/systemDefaults";
 
@@ -9,7 +9,7 @@ interface DropdownSelectorProps {
   placeholder?: string;
   onSelect: (item: string) => void;
   madeFor?: SystemDefaults;
-  outletId?:number|string
+  outletId?: number | string;
 }
 
 export function DropdownSelector({
@@ -18,8 +18,7 @@ export function DropdownSelector({
   placeholder = "Select Item",
   onSelect,
   madeFor,
-  outletId
-
+  outletId,
 }: DropdownSelectorProps) {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [showAddNew, setShowAddNew] = useState<boolean>(false);
@@ -49,8 +48,8 @@ export function DropdownSelector({
       console.error("Missing madeFor (SystemDefaults type)");
       return;
     }
-  
-    console.log(newItem, "Add new item")
+
+    console.log(newItem, "Add new item");
     const trimmed = newItem.trim();
     if (!trimmed || localItems.includes(trimmed)) return;
 
@@ -68,7 +67,6 @@ export function DropdownSelector({
           outletId as number
         );
         console.log(response);
-        
 
         const updatedItems = [...localItems, trimmed];
         setLocalItems(updatedItems);
@@ -81,6 +79,32 @@ export function DropdownSelector({
         setShowAddNew(false);
         setIsOpen(false);
       }
+    }
+  };
+
+  const handleDeleteItem = async (item: string) => {
+    if (!outletId) {
+      console.error("Missing outletId");
+      return;
+    }
+
+    if (!madeFor) {
+      console.error("Missing madeFor (SystemDefaults type)");
+      return;
+    }
+
+    try {
+      const response = await productManagementService.deleteSystemDefaults(
+        madeFor,
+        item,
+        outletId as number
+      );
+      console.log(response);
+
+      const updatedItems = localItems.filter((i) => i !== item);
+      setLocalItems(updatedItems);
+    } catch (error) {
+      console.error("Failed to delete item:", error);
     }
   };
 
@@ -115,18 +139,30 @@ export function DropdownSelector({
           <div>
             {filteredItems.map((item) => (
               <button
-              type="button"
+                type="button"
                 key={item}
-                onClick={() => handleItemSelect(item)}
-                className="w-full px-4 py-3 text-left text-white text-sm hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0"
+                className="w-full px-4 flex items-center justify-between  gap-2 text-left text-white text-sm hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0"
               >
-                {item}
+                <span
+                  onClick={() => handleItemSelect(item)}
+                  className={`flex-1 py-3 ${
+                    item === selectedItem ? "text-green-500" : ""
+                  }`}
+                >
+                  {item}
+                </span>
+                <span
+                  className="cursor-pointer bg-[#CB2929] hover:bg-red-100 px-2 py-2 rounded-full"
+                  onClick={() => handleDeleteItem(item)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </span>
               </button>
             ))}
 
             {!showAddNew ? (
               <button
-              type="button"
+                type="button"
                 onClick={() => setShowAddNew(true)}
                 className="w-full px-4 py-3 text-left text-green-400 text-sm hover:bg-gray-700 transition-colors flex items-center gap-2 border-t border-gray-700"
               >
@@ -144,7 +180,7 @@ export function DropdownSelector({
                     className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:ring-2 focus:ring-green-500 outline-none"
                   />
                   <button
-                  type="button"
+                    type="button"
                     onClick={handleAddNewItem}
                     className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
                   >

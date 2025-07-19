@@ -73,7 +73,7 @@ class SettingsService {
   async deleteBusinessLocation(outletId: number | string) {
     return this.request.delete(
       `/outlet/${outletId}`,
-
+      null,
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }
@@ -152,7 +152,7 @@ class SettingsService {
   }) {
     return this.request.delete(
       `/outlet/${outletId}/price-tier/${priceTierId}`,
-
+      null,
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }
@@ -216,6 +216,7 @@ class SettingsService {
   async deleteTax(outletId: string | number, tierId: string | number) {
     return this.request.delete(
       `/outlet/${outletId}/taxes/${tierId}`,
+      null,
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }
@@ -248,8 +249,9 @@ class SettingsService {
   }
 
   async deleteCharges(outletId: string | number, chargeId: string | number) {
-    return this.request.post(
+    return this.request.delete(
       `/outlet/${outletId}/service-charges/${chargeId}`,
+      null,
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }

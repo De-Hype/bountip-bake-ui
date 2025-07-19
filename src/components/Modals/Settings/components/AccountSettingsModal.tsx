@@ -16,7 +16,6 @@ export const AccountSettingsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (heading: string, description: string) => void;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 }> = ({ isOpen, onClose, onSuccess }) => {
   const [activeTab, setActiveTab] = useState<"taxes" | "service">("taxes");
   const { fetchCategory, categories } = useProductManagementStore();
@@ -24,7 +23,7 @@ export const AccountSettingsModal: React.FC<{
   const [categoriesList, setCategoriesList] = useState<DropdownOption[]>([]);
   const outletId = useSelectedOutlet()?.outlet.id;
   const outletsTaxData = useSelectedOutlet()?.outlet.taxSettings?.taxes;
-  console.log(outletsTaxData, "This is the tax data");
+  console.log(outletsTaxData, "This is the tax data we are");
 
   // Transform outlet tax data to component format
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -158,7 +157,21 @@ export const AccountSettingsModal: React.FC<{
 
     console.log(newData);
     // Here you would typically save to your backend
-    alert("Tax configuration saved successfully!");
+    onSuccess("Save Successful!", "Your Tax has been saved successfully");
+  };
+
+  const deleteTax = async (id: string) => {
+    const response = (await settingsService.deleteTax(
+      outletId as number,
+      id
+    )) as ApiResponseType;
+    console.log(response, "This is the response");
+    if (response.status) {
+      onSuccess("Tax Deleted", "Tax has been deleted successfully");
+      setTaxes((prev) => prev.filter((tax) => tax.id !== id));
+    } else {
+      toast.error("Failed to delete tax");
+    }
   };
 
   return (
@@ -202,6 +215,7 @@ export const AccountSettingsModal: React.FC<{
                 categories={categoriesList}
                 onUpdate={updateTax}
                 onAddCategory={addNewCategory}
+                onDelete={deleteTax}
               />
             ))}
 
@@ -249,6 +263,7 @@ interface TaxItemComponentProps {
   categories: DropdownOption[];
   onUpdate: (id: string, updates: Partial<TaxItem>) => void;
   onAddCategory: (categoryName: string) => void;
+  onDelete: (id: string) => void;
 }
 
 const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
@@ -257,6 +272,7 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
   categories,
   onUpdate,
   onAddCategory,
+  onDelete,
 }) => {
   const getTaxTitle = () => {
     if (index === 0) return "VAT";
@@ -275,8 +291,8 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
         {getTaxTitle()}
       </h3>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div>
+      <div className="flex gap-4 mb-6 relative">
+        <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Tax Name
           </label>
@@ -288,7 +304,7 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
             className="outline-none text-[12px] border-2 border-[#D1D1D1] w-full px-3.5 py-2.5 bg-[#FAFAFC] rounded-[10px]"
           />
         </div>
-        <div>
+        <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Tax Rate (%)
           </label>
@@ -296,12 +312,38 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
             type="number"
             value={tax.rate}
             onChange={(e) =>
-              onUpdate(tax.id, { rate: parseFloat(e.target.value) || 0 })
+              onUpdate(tax.id, { rate: parseFloat(e.target.value) })
             }
             placeholder="0.00"
             className="outline-none text-[12px] border-2 border-[#D1D1D1] w-full px-3.5 py-2.5 bg-[#FAFAFC] rounded-[10px]"
           />
         </div>
+        {/* Trash button for existing taxes */}
+        {(tax.name || tax.id) && (
+          <button
+            type="button"
+            title="Delete Tax"
+            onClick={() => {
+              onDelete(tax.id);
+            }}
+            className="absolute -top-2 -right-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-full p-2 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="space-y-3 mb-6">
@@ -526,7 +568,7 @@ const ServiceCharge: React.FC = () => {
   );
   const outlet = useSelectedOutlet();
   const outletId = outlet?.outlet.id as unknown as string;
-  console.log(outlet, "This is outletd")
+  console.log(outlet, "This is outletd");
   useEffect(() => {
     if (!outlet || !outlet.outlet?.serviceCharges?.charges?.length) return;
 
@@ -540,8 +582,6 @@ const ServiceCharge: React.FC = () => {
     }
   }, [outlet]);
 
-  
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log(outletId, serviceName, Number(serviceRate), selectedOption);
@@ -551,7 +591,7 @@ const ServiceCharge: React.FC = () => {
       const response = await settingsService.createCharges(
         outletId,
         serviceName,
-        Number(serviceRate),  
+        Number(serviceRate),
         selectedOption
       );
       console.log(response, "This is the response");

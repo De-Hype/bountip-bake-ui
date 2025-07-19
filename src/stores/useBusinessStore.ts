@@ -39,6 +39,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => ({
       const res = (await businessService.getUserBusiness(
         COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
       )) as BusinessApiResponseType;
+      console.log(res, "This is the response");
 
       if (res.status && res.data) {
         const outlets = Array.isArray(res.data.outlets)
@@ -81,5 +82,3 @@ export const useBusinessStore = create<BusinessStore>((set, get) => ({
 
   setSelectedOutletId: (id) => set({ selectedOutletId: id }),
 }));
-
-

@@ -13,6 +13,8 @@
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@react-oauth/google": "^0.12.2",
+    "@tanstack/react-query": "^5.83.0",
+    "@tanstack/react-query-devtools": "^5.83.0",
     "country-currency-map": "^2.1.7",
     "country-state-city": "^3.2.1",
     "currency-codes": "^2.2.0",
@@ -36,6 +38,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@tanstack/eslint-plugin-query": "^5.81.2",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
     "@types/react": "^19",

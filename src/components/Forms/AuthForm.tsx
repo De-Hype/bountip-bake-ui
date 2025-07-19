@@ -18,7 +18,8 @@ import AssetsFiles from "@/assets";
 import { useAuthStore } from "@/stores/useAuthStore";
 import PinInput from "../Inputs/PinInput";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import SuccessToast from "@/components/Modals/Success/SuccessModal";
+import ErrorToast from "@/components/Modals/Errors/ErrorModal";
 import { COOKIE_NAMES, setCookie } from "@/utils/cookiesUtils";
 import authService from "@/services/authServices";
 import { UserType } from "@/types/userTypes";
@@ -145,6 +146,16 @@ const AuthForm = ({ mode }: Props) => {
   const router = useRouter();
   const [currentEmail, setCurrentEmail] = useState<string>("");
   const [lockoutTimer, setLockoutTimer] = useState<number>(0);
+  const [successToast, setSuccessToast] = useState({
+    isOpen: false,
+    heading: "",
+    description: "",
+  });
+  const [errorToast, setErrorToast] = useState({
+    isOpen: false,
+    heading: "",
+    description: "",
+  });
 
   // Dynamic schema based on login mode
   const getSchema = () => {
@@ -216,25 +227,21 @@ const AuthForm = ({ mode }: Props) => {
       const remainingTime = getRemainingLockoutTime(email);
       setLockoutTimer(remainingTime);
 
-      toast.error(
-        `Account temporarily locked due to multiple failed attempts. Please try again in ${Math.ceil(
+      setErrorToast({
+        isOpen: true,
+        heading: "Account Locked",
+        description: `Account temporarily locked due to multiple failed attempts. Please try again in ${Math.ceil(
           remainingTime / 60
         )} minutes.`,
-        {
-          duration: 6000,
-          position: "bottom-right",
-        }
-      );
+      });
     } else {
       setFailedAttempts(email, newAttempts);
       const remainingAttempts = MAX_LOGIN_ATTEMPTS - newAttempts;
-      toast.error(
-        `Invalid credentials. ${remainingAttempts} attempt(s) remaining before account lockout.`,
-        {
-          duration: 4000,
-          position: "bottom-right",
-        }
-      );
+      setErrorToast({
+        isOpen: true,
+        heading: "Invalid Credentials",
+        description: `Invalid credentials. ${remainingAttempts} attempt(s) remaining before account lockout.`,
+      });
     }
   };
 
@@ -248,17 +255,19 @@ const AuthForm = ({ mode }: Props) => {
     const response = (await authService.signup(data)) as AuthResponse;
 
     if (response.error) {
-      toast.error(response.message || "Wrong credentials", {
-        duration: 4000,
-        position: "bottom-right",
+      setErrorToast({
+        isOpen: true,
+        heading: "Error!",
+        description: response.message || "Wrong credentials",
       });
       return response;
     }
 
     if (response.status) {
-      toast.success("User registered successfully", {
-        duration: 4000,
-        position: "bottom-right",
+      setSuccessToast({
+        isOpen: true,
+        heading: "User registered successfully",
+        description: "You have successfully registered.",
       });
       setCookie(
         COOKIE_NAMES.REG_USER_EMAIL,
@@ -273,15 +282,13 @@ const AuthForm = ({ mode }: Props) => {
     // Check if account is locked
     if (isAccountLocked(data.email)) {
       const remainingTime = getRemainingLockoutTime(data.email);
-      toast.error(
-        `Account is temporarily locked. Please try again in ${Math.ceil(
+      setErrorToast({
+        isOpen: true,
+        heading: "Account Locked",
+        description: `Account is temporarily locked. Please try again in ${Math.ceil(
           remainingTime / 60
         )} minutes.`,
-        {
-          duration: 4000,
-          position: "bottom-right",
-        }
-      );
+      });
       return;
     }
 
@@ -314,9 +321,10 @@ const AuthForm = ({ mode }: Props) => {
           accessToken: response.data.tokens.accessToken,
           refreshToken: response.data.tokens.refreshToken,
         });
-        toast.success("Sign in successful", {
-          duration: 4000,
-          position: "bottom-right",
+        setSuccessToast({
+          isOpen: true,
+          heading: "Sign in successful",
+          description: "You have successfully signed in.",
         });
         router.push("/settings");
       } else {
@@ -349,9 +357,10 @@ const AuthForm = ({ mode }: Props) => {
         // Clear any existing PIN login attempts
         clearLoginAttempts("pin_login");
 
-        toast.success("PIN login successful", {
-          duration: 4000,
-          position: "bottom-right",
+        setSuccessToast({
+          isOpen: true,
+          heading: "PIN login successful",
+          description: "You have successfully logged in via PIN.",
         });
 
         if (response.data?.tokens) {
@@ -381,23 +390,22 @@ const AuthForm = ({ mode }: Props) => {
     // Check if PIN login is locked
     if (isAccountLocked("pin_login")) {
       const remainingTime = getRemainingLockoutTime("pin_login");
-      toast.error(
-        `PIN login is temporarily locked. Please try again in ${Math.ceil(
+      setErrorToast({
+        isOpen: true,
+        heading: "PIN Login Locked",
+        description: `PIN login is temporarily locked. Please try again in ${Math.ceil(
           remainingTime / 60
         )} minutes.`,
-        {
-          duration: 4000,
-          position: "bottom-right",
-        }
-      );
+      });
       return;
     }
 
     // Validate PIN before submission
     if (!pin || pin.length < 4) {
-      toast.error("Please enter a valid 4-digit PIN", {
-        duration: 4000,
-        position: "bottom-right",
+      setErrorToast({
+        isOpen: true,
+        heading: "Invalid PIN",
+        description: "Please enter a valid 4-digit PIN",
       });
       return;
     }
@@ -488,6 +496,22 @@ const AuthForm = ({ mode }: Props) => {
         transition={{ duration: 0.3 }}
         className="w-full flex flex-col gap-[24px]"
       >
+        <SuccessToast
+          isOpen={successToast.isOpen}
+          heading={successToast.heading}
+          description={successToast.description}
+          onClose={() =>
+            setSuccessToast((prev) => ({ ...prev, isOpen: false }))
+          }
+          duration={5000}
+        />
+        <ErrorToast
+          isOpen={errorToast.isOpen}
+          heading={errorToast.heading}
+          description={errorToast.description}
+          onClose={() => setErrorToast((prev) => ({ ...prev, isOpen: false }))}
+          duration={5000}
+        />
         {/* Business Name - Show for signup only */}
         {mode === "signup" && (
           <div
@@ -609,7 +633,7 @@ const AuthForm = ({ mode }: Props) => {
         {mode === "signup" && password && (
           <PasswordStrengthMeter password={password} />
         )}
-        { mode === "signup" && !pinLogin && password && (
+        {mode === "signup" && !pinLogin && password && (
           <p className="text-sm text-gray-600 mt-1">{label}</p>
         )}
 

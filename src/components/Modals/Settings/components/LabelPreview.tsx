@@ -331,7 +331,7 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
               className="h-16 w-16 mx-auto mb-4 object-contain"
             />
           </div>
-        )}
+        )} 
 
         {getBusinessNameDisplay() && (
           <h2 className="text-xl font-bold text-gray-900 mb-1">

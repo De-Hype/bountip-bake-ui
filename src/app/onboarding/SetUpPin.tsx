@@ -5,26 +5,23 @@ import { toast } from "sonner";
 import authService from "@/services/authServices";
 import { useRouter } from "next/navigation";
 
-
 const SetUpPin = () => {
-    const router = useRouter();
+  const router = useRouter();
 
   const pin = useAuthStore((state) => state.pin);
 
   const handlePinSetUp = async () => {
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response:any = await authService.pinLogin({ pin });
-
+    const response: any = await authService.pinLogin({ pin });
 
     if (response.status) {
       toast.success("PIN setup successful, please sign in", {
         duration: 4000,
         position: "bottom-right",
       });
-      router.push("/auth?signin")
+      router.push("/auth?signin");
       removeCookie(COOKIE_NAMES.BOUNTIP_REGISTERED_USERS);
-    } else{
+    } else {
       toast.error(response.message || "PIN setup failed", {
         duration: 4000,
         position: "bottom-right",

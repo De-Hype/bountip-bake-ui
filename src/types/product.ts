@@ -1,17 +1,28 @@
 import { StaticImageData } from "next/image";
 import { Outlet } from "./outlet";
 
+
+
+export enum HistoryType {
+  PRICE = "price",
+  BULK = "bulk",
+}
+
 export interface ProductHistory {
   id: number;
   oldPrice: number;
   newPrice: number;
   changedBy?: string | null;
+  role?: string | null;
+  historyType: HistoryType;
   changeReason?: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  bulkData?: any[] | null;
   changedAt: Date;
-  product: Product;
-  productId: number;
-  role:string
+  product?: Product | null;
+  productId?: number | null;
 }
+
 
 export interface Product {
   id: number;
@@ -24,8 +35,8 @@ export interface Product {
   preparationArea: string | null;
   weight: number | null;
   weightScale: string | null;
-  packagingArea: string | null;
-  priceTierId: number | null;
+  packagingMethod: string[] | null;
+  priceTierId: number[] | null;
   allergenList: {
     allergies: string[];
   } | null;
