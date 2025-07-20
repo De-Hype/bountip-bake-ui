@@ -12,6 +12,8 @@ import { ApiResponseType } from "@/types/httpTypes";
 import { toast } from "sonner";
 import Image from "next/image";
 import LabelPreview from "./LabelPreview";
+import ReceiptBrandingPreview from "./Previews/ReceiptBrandingPreview";
+import { Outlet } from "@/types/outlet";
 
 const fontOptions = [
   { value: "productSans", label: "Product Sans" },
@@ -124,6 +126,7 @@ export const ReceiptCustomizationModal: React.FC<
         showOrderDateTime: settings.showOrderTime,
         showPaymentMethod: settings.showPaymentMethod,
         customMessage: settings.customThankYouMessage,
+        // showOrderName: settings.showOrderName,
       });
 
       if (settings.customizedLogoUrl) {
@@ -175,9 +178,9 @@ export const ReceiptCustomizationModal: React.FC<
       title="Receipt Customization"
       subtitle="Customize your receipt layout and information"
     >
-      <section className="flex ">
+      <section className="flex gap-5">
         <div className="space-y-6 flex-1/2">
-          <div className="flex bg-[#FAFAFC] rounded-[10px] px-5">
+          {/* <div className="flex bg-[#FAFAFC] rounded-[10px] px-5">
             <div className="flex flex-col items-center pt-2.5">
               <button
                 className={`font-medium text-sm ${
@@ -209,7 +212,7 @@ export const ReceiptCustomizationModal: React.FC<
                 }`}
               />
             </div>
-          </div>
+          </div> */}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -589,9 +592,18 @@ export const ReceiptCustomizationModal: React.FC<
             </Button>
           </form>
         </div>
-
-        {/* <div className="flex-1/2"></div> */}
-        <LabelPreview formData={formData} imageUrl={imageUrl} type="receipt" />
+        <div className="flex-1/2">
+          <ReceiptBrandingPreview
+            outlet={selectedOutlet?.outlet as Outlet}
+            formData={formData}
+            imageUrl={imageUrl}
+          />
+          {/* <LabelPreview
+            formData={formData}
+            imageUrl={imageUrl}
+            type="receipt"
+          /> */}
+        </div>
       </section>
     </Modal>
   );

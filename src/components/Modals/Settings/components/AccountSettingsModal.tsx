@@ -2,7 +2,7 @@ import SettingFiles from "@/assets/icons/settings";
 import { Modal } from "../ui/Modal";
 import { useEffect, useState } from "react";
 import { Dropdown } from "../ui/Dropdown";
-import { Check, Plus } from "lucide-react";
+import { Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { useProductManagementStore } from "@/stores/useProductManagementStore";
 import { useSelectedOutlet } from "@/hooks/useSelectedOutlet";
 import { TaxApplicationType, TaxScopeType } from "@/types/settingTypes";
@@ -219,7 +219,7 @@ export const AccountSettingsModal: React.FC<{
 
             <button
               onClick={addNewTax}
-              className="w-full mb-4 px-4 py-3 border border-[#15BA5C] text-[#15BA5C] rounded-lg hover:bg-green-50 transition-colors flex items-center justify-center bg-white"
+              className="w-full cursor-pointer mb-4 px-4 py-3 border border-[#15BA5C] text-[#15BA5C] rounded-lg hover:bg-green-50 transition-colors flex items-center justify-center bg-white"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add a new Tax
@@ -227,14 +227,16 @@ export const AccountSettingsModal: React.FC<{
 
             <button
               onClick={saveTax}
-              className="w-full px-6 py-3 bg-[#15BA5C] text-white font-medium rounded-lg hover:bg-[#13A652] transition-colors flex items-center justify-center"
+              className="w-full cursor-pointer px-6 py-3 bg-[#15BA5C] text-white font-medium rounded-lg hover:bg-[#13A652] transition-colors flex items-center justify-center"
             >
               <Check className="h-4 w-4 mr-2" />
               Save Tax
             </button>
           </div>
         )}
-        {activeTab === "service" && <ServiceCharge />}
+        {activeTab === "service" && (
+          <ServiceCharge onSuccess={onSuccess} onError={onError} />
+        )}
       </div>
     </Modal>
   );
@@ -270,16 +272,14 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
   categories,
   onUpdate,
   onAddCategory,
+  onDelete,
 }) => {
   const getTaxTitle = () => {
-    if (index === 0) return "VAT";
-    if (index === 1) return "Tax one";
     return `Tax ${index + 1}`;
   };
 
   const getNamePlaceholder = () => {
-    if (index === 0) return "VAT";
-    return "Enter Task Name";
+    return `Tax ${index + 1}`;
   };
 
   return (
@@ -288,8 +288,8 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
         {getTaxTitle()}
       </h3>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div>
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Tax Name
           </label>
@@ -301,7 +301,7 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
             className="outline-none text-[12px] border-2 border-[#D1D1D1] w-full px-3.5 py-2.5 bg-[#FAFAFC] rounded-[10px]"
           />
         </div>
-        <div>
+        <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Tax Rate (%)
           </label>
@@ -309,11 +309,25 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
             type="number"
             value={tax.rate}
             onChange={(e) =>
-              onUpdate(tax.id, { rate: parseFloat(e.target.value) || 0 })
+              onUpdate(tax.id, { rate: parseFloat(e.target.value) })
             }
+            min={0}
             placeholder="0.00"
             className="outline-none text-[12px] border-2 border-[#D1D1D1] w-full px-3.5 py-2.5 bg-[#FAFAFC] rounded-[10px]"
           />
+        </div>
+        <div className="">
+          <label className="block h-[20px] text-sm font-medium text-gray-700 mb-2">
+            {/* Tax Rate (%) */}
+          </label>
+          <button
+            type="button"
+            className="border border-[#E33629] h-[40px] w-[45px] rounded-[10px] flex items-center justify-center cursor-pointer hover:bg-red-50 transition"
+            onClick={() => onDelete(tax.id)}
+            title="Delete Tax"
+          >
+            <Trash2 className="w-4 h-4 text-red-500" />
+          </button>
         </div>
       </div>
 
@@ -531,20 +545,22 @@ const TaxItemComponent: React.FC<TaxItemComponentProps> = ({
   );
 };
 
-const ServiceCharge: React.FC = () => {
+const ServiceCharge: React.FC<{
+  onSuccess: (heading: string, description: string) => void;
+  onError: (heading: string, description: string) => void;
+}> = ({ onSuccess, onError }) => {
   const [serviceName, setServiceName] = useState("");
   const [serviceRate, setServiceRate] = useState("");
   const [selectedOption, setSelectedOption] = useState<TaxApplicationType>(
     TaxApplicationType.INCLUDED
   );
   const outlet = useSelectedOutlet();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const outletId = outlet?.outlet.id as unknown as string;
-  console.log(outlet, "This is outletd");
   useEffect(() => {
     if (!outlet || !outlet.outlet?.serviceCharges?.charges?.length) return;
 
     const firstCharge = outlet.outlet.serviceCharges.charges[0];
-    console.log(outlet, "This is charge");
 
     if (firstCharge?.name) setServiceName(firstCharge.name);
     if (firstCharge?.rate) setServiceRate(String(firstCharge.rate));
@@ -554,25 +570,41 @@ const ServiceCharge: React.FC = () => {
   }, [outlet]);
 
   const handleSubmit = async (e: React.FormEvent) => {
+    setIsLoading(true);
     e.preventDefault();
-    console.log(outletId, serviceName, Number(serviceRate), selectedOption);
     if (!outletId) return null;
 
     try {
-      const response = await settingsService.createCharges(
+      const response = (await settingsService.createCharges(
         outletId,
         serviceName,
         Number(serviceRate),
         selectedOption
-      );
-      console.log(response, "This is the response");
+      )) as ApiResponseType;
+      if (response.status) {
+        onSuccess(
+          "Service Charge Created",
+          "Service Charge has been created successfully"
+        );
+      } else {
+        onError(
+          "Failed to create service charge",
+          "Failed to create service charge"
+        );
+      }
     } catch (error) {
       console.error("Error creating service charge:", error);
+      onError(
+        "Failed to create service charge",
+        "Failed to create service charge"
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg">
+    <div className="bg-white p-3  rounded-lg">
       <div className="border border-[#E6E6E6] rounded-[10px] mb-7 relative px-5 py-9">
         <h2 className="text-lg font-semibold bg-white text-gray-900 mb-6 absolute z-50 -top-3.5">
           Service Charge
@@ -729,9 +761,15 @@ const ServiceCharge: React.FC = () => {
       <button
         onClick={handleSubmit}
         type="button"
-        className="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-4 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        className="w-full bg-[#15BA5C] cursor-pointer hover:bg-green-600 text-white font-medium py-3 px-4 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
       >
-        Create Service Charge
+        {isLoading ? (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" /> Creating
+          </span>
+        ) : (
+          "Create Service Charge"
+        )}
       </button>
     </div>
   );

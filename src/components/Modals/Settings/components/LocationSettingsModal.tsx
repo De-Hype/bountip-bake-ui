@@ -226,7 +226,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
       onClose(); // Close the modal after saving
     } catch (error) {
       console.error("Error saving locations", error);
-        onError("Failed to save locations", "Failed to save locations");
+      onError("Failed to save locations", "Failed to save locations");
     } finally {
       setIsSaving(false);
     }
@@ -318,12 +318,14 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                       disabled={isSaving}
                     />
                   </div>
-                  <div className="col-span-1 flex items-end pb-2 justify-center">
+
+                  <div className="col-span-1 flex flex-col items-end pb-2 justify-center">
+                    <div className=" h-[16px] w-[45px] rounded-[10px] flex items-center justify-center cursor-pointer hover:bg-red-50 transition"></div>
                     <button
                       type="button"
                       onClick={toggleDefaultLocationEdit}
                       disabled={isSaving}
-                      className="p-2 text-green-500 hover:text-green-700 border border-green-200 rounded-lg hover:border-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2 py-3 cursor-pointer text-[#15BA5C]  border border-[#15BA5C] rounded-lg hover:bg-[#15BA5C] hover:text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Check className="h-4 w-4" />
                     </button>
@@ -437,12 +439,12 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                     disabled={isSaving || deletingLocationId === location.id}
                   />
                 </div>
-                <div className="col-span-1 flex items-end pb-2 justify-center">
+                <div className="col-span-1 flex flex-col items-end pb-2 justify-center">
                   <button
                     type="button"
                     onClick={() => removeExistingLocation(location.id)}
                     disabled={isSaving || deletingLocationId === location.id}
-                    className="p-2 text-red-500 hover:text-red-700 border border-red-200 rounded-lg hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-[40px] h-[40px] flex items-center justify-center cursor-pointer text-[#E33629]  border border-[#E33629] rounded-lg hover:bg-[#E33629] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {deletingLocationId === location.id ? (
                       <LoadingSpinner />
@@ -450,6 +452,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                       <Trash2 className="h-4 w-4" />
                     )}
                   </button>
+                  <div className=" h-[9px] w-[45px] rounded-[10px] flex items-center justify-center cursor-pointer  transition"></div>
                 </div>
               </div>
             ))}
@@ -499,12 +502,12 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                     disabled={isSaving || deletingNewLocationIndex === index}
                   />
                 </div>
-                <div className="col-span-1 flex items-end pb-2 justify-center">
+                <div className="col-span-1 flex flex-col items-end pb-2 justify-center">
                   <button
                     type="button"
                     onClick={() => removeNewLocation(index)}
                     disabled={isSaving || deletingNewLocationIndex === index}
-                    className="p-2 text-red-500 hover:text-red-700 border border-red-200 rounded-lg hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-[40px] h-[40px] flex items-center justify-center cursor-pointer text-[#E33629]  border border-[#E33629] rounded-lg hover:bg-[#E33629] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {deletingNewLocationIndex === index ? (
                       <LoadingSpinner />
@@ -512,6 +515,7 @@ export const LocationSettingsModal: React.FC<LocationSettingsModalProps> = ({
                       <Trash2 className="h-4 w-4" />
                     )}
                   </button>
+                  <div className=" h-[9px] w-[45px] rounded-[10px] flex items-center justify-center cursor-pointer  transition"></div>
                 </div>
               </div>
             ))}

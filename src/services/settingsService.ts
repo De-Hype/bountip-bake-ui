@@ -254,6 +254,14 @@ class SettingsService {
       COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
     );
   }
+
+  async addPaymentMethod(outletId: string | number, data: {name:string, isActive:boolean }[]) {
+    return this.request.patch(
+      `/outlet/${outletId}/payment-method`,
+      {methods:data},
+      COOKIE_NAMES.BOUNTIP_LOGIN_USER_TOKENS
+    );
+  }
   async updateLabelSettings(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     formData: any,
